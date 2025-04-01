@@ -1,0 +1,9 @@
+graph TD
+    A((Incoming Requests)) --> B{Hammer Token Bucket}
+    B -->|Pass| C[Immediate Response]
+    B -->|Rate Limited| D[Redis Sorted Set FIFO Queue, ZADD/ZREM]
+    D -->|Dequeue Scheduled| F[Global Singleton Pool]
+    F -->|Scheduled Remove Member Request ZREM| D
+    D -->|TTL Cleanup Task ZREMRANGEBYSCORE| D
+    F --> G[Queue Worker Process]
+    G --> H[Final Response to Client]
