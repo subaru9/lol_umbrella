@@ -42,10 +42,11 @@ defmodule LolApi.Base do
   def base_url(region), do: "https://#{region}.api.riotgames.com"
 
   defp handle_response(
-         {:ok, %Finch.Response{status: status, body: body, headers: _resp_headers}},
+         {:ok, %Finch.Response{status: status, body: body, headers: resp_headers}},
          _url
        )
        when status in 200..299 do
+    dbg(resp_headers)
     JSON.decode(body)
   end
 

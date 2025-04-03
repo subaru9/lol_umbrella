@@ -40,7 +40,8 @@ defmodule LolApi.MixProject do
       {:prometheus_telemetry, "~> 0.4"},
       {:sandbox_registry, "~> 0.1"},
       {:singleton, "~> 1.0"},
-      {:shared_utils, in_umbrella: true}
+      {:shared_utils, in_umbrella: true},
+      {:timex, "~> 3.7"}
     ]
   end
 end

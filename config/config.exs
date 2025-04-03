@@ -10,6 +10,8 @@
 import Config
 
 # Configure Mix tasks and generators
+config :lol_api, :api_key, System.get_env("RIOT_API_KEY")
+
 config :lol_api, :rate_limiter,
   limiter_type: LolApi.RateLimiter.LeakyBucket,
   # respects riot's long term limit - 100 requests per 2 minutes
