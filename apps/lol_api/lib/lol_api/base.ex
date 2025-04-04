@@ -46,7 +46,6 @@ defmodule LolApi.Base do
          _url
        )
        when status in 200..299 do
-    dbg(resp_headers)
     JSON.decode(body)
   end
 
