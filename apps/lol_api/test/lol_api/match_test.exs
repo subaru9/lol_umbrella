@@ -23,28 +23,28 @@ defmodule LolApi.MatchTest do
       expected = {
         :ok,
         %{
-          "metadata" => %{
-            "matchId" => "EUW1_7175686677",
-            "participants" => ["player1", "player2"]
+          metadata: %{
+            match_id: "EUW1_7175686677",
+            participants: ["player1", "player2"]
           },
-          "info" => %{
-            "gameId" => 7_175_686_677,
-            "gameMode" => "CLASSIC",
-            "gameDuration" => 110,
-            "participants" => [
+          info: %{
+            game_id: 7_175_686_677,
+            game_mode: "CLASSIC",
+            game_duration: 110,
+            participants: [
               %{
-                "championId" => 39,
-                "teamId" => 100,
-                "kills" => 10,
-                "deaths" => 2,
-                "assists" => 5
+                champion_id: 39,
+                team_id: 100,
+                kills: 10,
+                deaths: 2,
+                assists: 5
               },
               %{
-                "championId" => 157,
-                "teamId" => 200,
-                "kills" => 7,
-                "deaths" => 8,
-                "assists" => 3
+                champion_id: 157,
+                team_id: 200,
+                kills: 7,
+                deaths: 8,
+                assists: 3
               }
             ]
           }

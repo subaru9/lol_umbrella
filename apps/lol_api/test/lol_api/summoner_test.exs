@@ -22,13 +22,12 @@ defmodule LolApi.SummonerTest do
       expected = {
         :ok,
         %{
-          "id" => "2RLX7vrqAs_VB43LCljfBYL6L9w591Qu8SBHvQReUh8rOgHU",
-          "accountId" => "fGuNYI3heOGiHLRb7KV9eUVZ6vYkxa7uHtpOguRtlIemXGU",
-          "puuid" =>
-            "BFT9hQFvdN8PBCc4RqBRwWMkjs2G7RFaKzAEPzRC3yHgF8FVFhriddny_TnFQU8BZsSj7PnFMGy1-w",
-          "profileIconId" => 1456,
-          "revisionDate" => 1_732_747_632_762,
-          "summonerLevel" => 661
+          id: "2RLX7vrqAs_VB43LCljfBYL6L9w591Qu8SBHvQReUh8rOgHU",
+          account_id: "fGuNYI3heOGiHLRb7KV9eUVZ6vYkxa7uHtpOguRtlIemXGU",
+          puuid: "BFT9hQFvdN8PBCc4RqBRwWMkjs2G7RFaKzAEPzRC3yHgF8FVFhriddny_TnFQU8BZsSj7PnFMGy1-w",
+          profile_icon_id: 1456,
+          revision_date: 1_732_747_632_762,
+          summoner_level: 661
         }
       }
 

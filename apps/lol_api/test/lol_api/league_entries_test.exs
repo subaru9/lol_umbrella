@@ -35,25 +35,26 @@ defmodule LolApi.LeagueEntriesTest do
          end}
       ])
 
-      expected = {
-        :ok,
-        [
-          %{
-            "freshBlood" => true,
-            "hotStreak" => true,
-            "inactive" => false,
-            "leagueId" => "67f71fa1-fa23-4bb8-a093-2215e1c05686",
-            "leaguePoints" => 4,
-            "losses" => 177,
-            "queueType" => "RANKED_SOLO_5x5",
-            "rank" => "I",
-            "summonerId" => "2RLX7vrqAs_VB43LCljfBYL6L9w591Qu8SBHvQReUh8rOgHU",
-            "tier" => "DIAMOND",
-            "veteran" => false,
-            "wins" => 171
-          }
-        ]
-      }
+      expected =
+        {
+          :ok,
+          [
+            %{
+              fresh_blood: true,
+              hot_streak: true,
+              inactive: false,
+              league_id: "67f71fa1-fa23-4bb8-a093-2215e1c05686",
+              league_points: 4,
+              losses: 177,
+              queue_type: "RANKED_SOLO_5x5",
+              rank: "I",
+              summoner_id: "2RLX7vrqAs_VB43LCljfBYL6L9w591Qu8SBHvQReUh8rOgHU",
+              tier: "DIAMOND",
+              veteran: false,
+              wins: 171
+            }
+          ]
+        }
 
       assert LolApi.get_league_entries("euw1", "RANKED_SOLO_5x5", "DIAMOND", "I") === expected
     end
