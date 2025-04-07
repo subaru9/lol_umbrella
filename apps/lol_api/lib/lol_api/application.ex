@@ -16,7 +16,10 @@ defmodule LolApi.Application do
       {PrometheusTelemetry,
        metrics: [
          PrometheusTelemetry.Metrics.Finch.metrics()
-       ]}
+       ]},
+      # Rate Limiter Redis Pool
+      {Redix, name: :redix},
+      {SharedUtils.Redis, LolApi.Config.rate_limiter_redis_pool_opts()},
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
@@ -24,7 +27,7 @@ defmodule LolApi.Application do
     opts = [strategy: :one_for_one, name: LolApi.Supervisor]
     {:ok, pid} = Supervisor.start_link(children, opts)
 
-    {:ok, _rate_limiter_pid} = start_rate_limiter_as_global()
+    # {:ok, _rate_limiter_pid} = start_rate_limiter_as_global()
 
     {:ok, pid}
   end

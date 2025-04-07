@@ -22,16 +22,11 @@ defmodule SharedUtils.MixProject do
     ]
   end
 
-  # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:error_message,
-       git: "https://github.com/subaru9/elixir_error_message.git",
-       branch: "feat/json-serialisable-functions",
-       override: true}
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},
-      # {:sibling_app_in_umbrella, in_umbrella: true}
+      {:error_message, "~> 0.3"},
+      {:poolboy, "~> 1.5"},
+      {:redix, "~> 1.5"}
     ]
   end
 end

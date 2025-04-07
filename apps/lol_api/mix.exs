@@ -31,10 +31,7 @@ defmodule LolApi.MixProject do
   defp deps do
     [
       {:ecto, "~> 3.0"},
-      {:error_message,
-       git: "https://github.com/subaru9/elixir_error_message.git",
-       branch: "feat/json-serialisable-functions",
-       override: true},
+      {:error_message, "~> 0.3"},
       {:finch, "~> 0.19.0", override: true},
       {:jason, "~> 1.2"},
       {:prometheus_telemetry, "~> 0.4"},
