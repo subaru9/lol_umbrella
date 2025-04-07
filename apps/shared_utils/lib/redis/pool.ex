@@ -1,6 +1,18 @@
 defmodule SharedUtils.Redis.Pool do
   alias SharedUtils.Redis.Error
 
+  @type pool_opts :: %{
+          required(:pool_name) => atom(),
+          optional(:registration_scope) => atom(),
+          optional(:pool_size) => pos_integer(),
+          optional(:max_overflow) => pos_integer(),
+          optional(:strategy) => atom()
+        }
+  @type child_spec_tuple ::
+          {atom(), {module(), atom(), [any()]}, :permanent | :temporary | :transient, timeout(),
+           :worker | :supervisor, [module()]}
+
+  @spec child_spec(pool_opts()) :: child_spec_tuple()
   def child_spec(opts) do
     pool_name =
       Map.fetch!(opts, :pool_name)
