@@ -1,5 +1,6 @@
 defmodule LolApi.RateLimiter.KeyBuilder do
   alias LolApi.RateLimiter
+  alias LolApi.RateLimiter.KeyBuilder
 
   @our_prefix "lol_api"
   @riot_prefix "riot"
@@ -91,46 +92,6 @@ defmodule LolApi.RateLimiter.KeyBuilder do
       RateLimiter.limit_types(),
       &build(:policy_windows, routing_val, endpoint, %{limit_type: &1})
     )
-  end
-
-  @doc """
-  Builds a single Redis MSET command to cache all policy definitions in one call.
-
-  It merges `:policy_windows` and per-window `:policy_limit` keys into a flat structure.
-
-  ## Example
-
-      iex> grouped = %{
-      ...>   {"na1", "/lol/summoner", :app} => [
-      ...>     %{window_sec: 120, count_limit: 100},
-      ...>     %{window_sec: 1, count_limit: 20}
-      ...>   ],
-      ...>   {"na1", "/lol/summoner", :method} => [
-      ...>     %{window_sec: 10, count_limit: 50}
-      ...>   ]
-      ...> }
-      iex> LolApi.RateLimiter.RedisCommand.build_policy_mset_command(grouped)
-      [
-        "MSET",
-        "riot:v1:policy:na1:/lol/summoner:app:windows", "120,1",
-        "riot:v1:policy:na1:/lol/summoner:method:windows", "10",
-        "riot:v1:policy:na1:/lol/summoner:app:window:120:limit", "100",
-        "riot:v1:policy:na1:/lol/summoner:app:window:1:limit", "20",
-        "riot:v1:policy:na1:/lol/summoner:method:window:10:limit", "50"
-      ]
-
-  """
-  @spec build_policy_mset_command(%{
-          {String.t(), String.t(), atom()} => [
-            %{window_sec: pos_integer(), count_limit: pos_integer()}
-          ]
-        }) :: [String.t()]
-  def build_policy_mset_command(grouped) do
-    policy_windows = build_policy_window_entries(grouped)
-    limits = build_limit_entries(grouped)
-
-    ["MSET"] ++
-      Enum.flat_map(policy_windows ++ limits, fn {k, v} -> [k, v] end)
   end
 
   @doc """
