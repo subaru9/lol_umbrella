@@ -13,12 +13,27 @@ defmodule LolApi.RateLimiter.HeadersParser do
       ...> ]
       iex> LolApi.RateLimiter.HeadersParser.parse(headers)
       [
-        %{limit_type: :app, window_sec: 120, count_limit: 100, count: 20,
-          request_time: ~U[2025-04-01 18:15:26Z]},
-        %{limit_type: :app, window_sec: 1, count_limit: 20, count: 2,
-          request_time: ~U[2025-04-01 18:15:26Z]},
-        %{limit_type: :method, window_sec: 10, count_limit: 50, count: 20,
-          request_time: ~U[2025-04-01 18:15:26Z]}
+        %{
+          limit_type: :app,
+          window_sec: 120,
+          count_limit: 100,
+          count: 20,
+          request_time: ~U[2025-04-01 18:15:26Z]
+        },
+        %{
+          limit_type: :app,
+          window_sec: 1,
+          count_limit: 20,
+          count: 2,
+          request_time: ~U[2025-04-01 18:15:26Z]
+        },
+        %{
+          limit_type: :method,
+          window_sec: 10,
+          count_limit: 50,
+          count: 20,
+          request_time: ~U[2025-04-01 18:15:26Z]
+        }
       ]
   """
 
@@ -29,7 +44,7 @@ defmodule LolApi.RateLimiter.HeadersParser do
   @date "date"
   @retry_after "retry-after"
 
-  @spec parse([{binary(), binary()}]) :: [map()]
+  @spec parse([{String.t(), String.t()}]) :: [map()]
   def parse(headers) do
     map = Enum.into(headers, %{})
     request_time = Timex.parse!(map[@date], "{RFC1123}")
@@ -67,5 +82,43 @@ defmodule LolApi.RateLimiter.HeadersParser do
     entry
     |> String.split(":")
     |> Enum.map(&String.to_integer/1)
+  end
+
+  @doc """
+  Groups a flat list of parsed header entries by `{routing_val, endpoint, limit_type}`.
+
+  This prepares the data for batching into Redis, so all windows and limits are stored together per policy type.
+
+  ## Example
+
+      iex> headers = [
+      ...>   %{limit_type: :app, window_sec: 120, count_limit: 100},
+      ...>   %{limit_type: :app, window_sec: 1, count_limit: 20},
+      ...>   %{limit_type: :method, window_sec: 10, count_limit: 50}
+      ...> ]
+      iex> LolApi.RateLimiter.RedisCommand.group_by_routing_endpoint_and_type("na1", "/lol/summoner", headers)
+      %{
+        {"na1", "/lol/summoner", :app} => [
+          %{limit_type: :app, window_sec: 120, count_limit: 100},
+          %{limit_type: :app, window_sec: 1, count_limit: 20}
+        ],
+        {"na1", "/lol/summoner", :method} => [
+          %{limit_type: :method, window_sec: 10, count_limit: 50}
+        ]
+      }
+
+  """
+  @spec group_by_routing_endpoint_and_type(
+          String.t(),
+          String.t(),
+          [map()]
+        ) ::
+          %{
+            {String.t(), String.t(), atom()} => [map()]
+          }
+  def group_by_routing_endpoint_and_type(routing_val, endpoint, headers) do
+    Enum.group_by(headers, fn %{limit_type: type} ->
+      {routing_val, endpoint, type}
+    end)
   end
 end

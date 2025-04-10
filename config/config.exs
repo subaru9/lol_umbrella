@@ -17,7 +17,7 @@ config :lol_api, :rate_limiter,
   # respects riot's long term limit - 100 requests per 2 minutes
   requests_per_second: 0.83,
   redis_pool: %{
-    pool_name: :lol_api_rate_limiter_redis_pool,
+    pool_name: :lol_api_rate_limiter_pool,
     registration_scope: :global,
     pool_size: 10,
     max_overflow: 10
