@@ -16,7 +16,7 @@ defmodule LolApi.RateLimiter.HeadersMapper do
           required(:limit_type) => limit_type(),
           required(:window_sec) => pos_integer(),
           required(:count_limit) => pos_integer(),
-          required(:count) => pos_integer(),
+          required(:count) => non_neg_integer(),
           required(:request_time) => String.t(),
           optional(:retry_after) => pos_integer()
         }
