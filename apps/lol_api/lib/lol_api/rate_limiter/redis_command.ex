@@ -7,6 +7,7 @@ defmodule LolApi.RateLimiter.RedisCommand do
   @type keys :: list(String.t())
   @type ttls :: list(non_neg_integer())
   @type limit_check_result :: {:allowed} | {:throttled, non_neg_integer()}
+  @type command :: [String.t()]
 
   @doc """
   Atomic operation with Lua script needed for rate limiter.
@@ -116,12 +117,32 @@ defmodule LolApi.RateLimiter.RedisCommand do
           {String.t(), String.t(), atom()} => [
             %{window_sec: pos_integer(), count_limit: pos_integer()}
           ]
-        }) :: [String.t()]
+        }) :: command()
   def build_policy_mset_command(grouped) do
     policy_windows = KeyBuilder.build_policy_window_entries(grouped)
     limits = KeyBuilder.build_limit_entries(grouped)
 
     ["MSET"] ++
       Enum.flat_map(policy_windows ++ limits, fn {k, v} -> [k, v] end)
+  end
+
+  @spec fetch_policy_windows_with_keys(keys) :: command()
+  def fetch_policy_windows_with_keys(keys) do
+    script = """
+    results={}
+    for i, key in ipairs(KEYS) do
+      val = redis.call("GET", key)
+      table.insert(results, key)
+      table.insert(results, val)
+    end
+    return results
+    """
+
+    [
+      "EVAL",
+      script,
+      to_string(length(keys)),
+      keys
+    ]
   end
 end
