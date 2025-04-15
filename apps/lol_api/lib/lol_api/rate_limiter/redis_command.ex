@@ -2,6 +2,7 @@ defmodule LolApi.RateLimiter.RedisCommand do
   @moduledoc """
   Domain-aware redis commands
   """
+  alias LolApi.RateLimiter.KeyValueBuilder
   alias LolApi.RateLimiter.KeyBuilder
 
   @type keys :: list(String.t())
@@ -93,16 +94,30 @@ defmodule LolApi.RateLimiter.RedisCommand do
 
   ## Example
 
-      iex> grouped = %{
-      ...>   {"na1", "/lol/summoner", :app} => [
-      ...>     %{window_sec: 120, count_limit: 100},
-      ...>     %{window_sec: 1, count_limit: 20}
-      ...>   ],
-      ...>   {"na1", "/lol/summoner", :method} => [
-      ...>     %{window_sec: 10, count_limit: 50}
-      ...>   ]
-      ...> }
-      iex> LolApi.RateLimiter.RedisCommand.build_policy_mset_command(grouped)
+      iex> entries = [
+      ...>   %LolApi.RateLimiter.LimitEntry{
+      ...>     routing_val: "na1",
+      ...>     endpoint: "/lol/summoner",
+      ...>     limit_type: :app,
+      ...>     window_sec: 120,
+      ...>     count_limit: 100
+      ...>   },
+      ...>   %LolApi.RateLimiter.LimitEntry{
+      ...>     routing_val: "na1",
+      ...>     endpoint: "/lol/summoner",
+      ...>     limit_type: :app,
+      ...>     window_sec: 1,
+      ...>     count_limit: 20
+      ...>   },
+      ...>   %LolApi.RateLimiter.LimitEntry{
+      ...>     routing_val: "na1",
+      ...>     endpoint: "/lol/summoner",
+      ...>     limit_type: :method,
+      ...>     window_sec: 10,
+      ...>     count_limit: 50
+      ...>   }
+      ...> ]
+      iex> LolApi.RateLimiter.RedisCommand.build_policy_mset_command(entries)
       [
         "MSET",
         "riot:v1:policy:na1:/lol/summoner:app:windows", "120,1",
@@ -111,16 +126,11 @@ defmodule LolApi.RateLimiter.RedisCommand do
         "riot:v1:policy:na1:/lol/summoner:app:window:1:limit", "20",
         "riot:v1:policy:na1:/lol/summoner:method:window:10:limit", "50"
       ]
-
   """
-  @spec build_policy_mset_command(%{
-          {String.t(), String.t(), atom()} => [
-            %{window_sec: pos_integer(), count_limit: pos_integer()}
-          ]
-        }) :: command()
-  def build_policy_mset_command(grouped) do
-    policy_windows = KeyBuilder.build_policy_window_entries(grouped)
-    limits = KeyBuilder.build_limit_entries(grouped)
+  @spec build_policy_mset_command([LimitEntry.t()]) :: [String.t()]
+  def build_policy_mset_command(entries) do
+    policy_windows = KeyValueBuilder.build_policy_window_entries(entries)
+    limits = KeyValueBuilder.build_policy_limit_entries(entries)
 
     ["MSET"] ++
       Enum.flat_map(policy_windows ++ limits, fn {k, v} -> [k, v] end)

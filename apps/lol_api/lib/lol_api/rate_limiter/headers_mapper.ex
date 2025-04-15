@@ -118,38 +118,4 @@ defmodule LolApi.RateLimiter.HeadersMapper do
       _ -> DateTime.utc_now()
     end
   end
-
-  @doc """
-  Groups a flat list of parsed header entries by `{routing_val, endpoint, limit_type}`.
-
-  This prepares the data for batching into Redis, so all windows and limits are stored together per policy type.
-
-  ## Example
-
-      iex> parsed_headers = [
-      ...>   %{limit_type: :app, window_sec: 120, count_limit: 100},
-      ...>   %{limit_type: :app, window_sec: 1, count_limit: 20},
-      ...>   %{limit_type: :method, window_sec: 10, count_limit: 50}
-      ...> ]
-      iex> LolApi.RateLimiter.RedisCommand.group_by_routing_endpoint_and_type(parsed_headers, "na1", "/lol/summoner")
-      %{
-        {"na1", "/lol/summoner", :app} => [
-          %{limit_type: :app, window_sec: 120, count_limit: 100},
-          %{limit_type: :app, window_sec: 1, count_limit: 20}
-        ],
-        {"na1", "/lol/summoner", :method} => [
-          %{limit_type: :method, window_sec: 10, count_limit: 50}
-        ]
-      }
-
-  """
-  @spec group_by_routing_endpoint_and_type([entry], routing_val(), endpoint()) ::
-          %{
-            {String.t(), String.t(), atom()} => [map()]
-          }
-  def group_by_routing_endpoint_and_type(header_entries, routing_val, endpoint) do
-    Enum.group_by(header_entries, fn %{limit_type: type} ->
-      {routing_val, endpoint, type}
-    end)
-  end
 end
