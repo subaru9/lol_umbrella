@@ -59,12 +59,12 @@ defmodule LolApi.RateLimiter.KeyParser do
     %{
       prefix: prefix,
       version: version,
-      mode: parse_to_atom(mode),
+      mode: String.to_atom(mode),
       routing_val: routing_val,
       endpoint: endpoint,
-      limit_type: parse_to_atom(limit_type),
+      limit_type: String.to_atom(limit_type),
       window_sec: String.to_integer(window_sec),
-      suffix: Enum.map(suffix, &parse_to_atom/1)
+      suffix: Enum.map(suffix, &String.to_atom/1)
     }
   end
 
@@ -79,13 +79,11 @@ defmodule LolApi.RateLimiter.KeyParser do
     %{
       prefix: prefix,
       version: version,
-      mode: parse_to_atom(mode),
+      mode: String.to_atom(mode),
       routing_val: routing_val,
       endpoint: endpoint,
-      limit_type: parse_to_atom(limit_type),
-      suffix: Enum.map(suffix, &parse_to_atom/1)
+      limit_type: String.to_atom(limit_type),
+      suffix: Enum.map(suffix, &String.to_atom/1)
     }
   end
-
-  defp parse_to_atom(str), do: String.to_existing_atom(str)
 end

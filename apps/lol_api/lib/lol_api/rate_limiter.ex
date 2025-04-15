@@ -3,7 +3,7 @@ defmodule LolApi.RateLimiter do
   RateLimiter context for delegating rate-limiting operations
   to the configured limiter type.
   """
-  alias LolApi.RateLimiter.{HeadersMapper, KeyBuilder, RedisCommand}
+  alias LolApi.RateLimiter.{KeyBuilder, RedisCommand, LimitEntry}
   alias SharedUtils.Redis
 
   @pool_name :lol_api_rate_limiter_pool
@@ -30,14 +30,14 @@ defmodule LolApi.RateLimiter do
   @spec policy_known?(routing_val(), endpoint()) :: boolean() | {:error, ErrorMessage.t()}
   def policy_known?(routing_val, endpoint) do
     routing_val
-    |> KeyBuilder.build_policy_windows_keys(endpoint)
+    |> KeyBuilder.build_policy_windows(endpoint)
     |> RedisCommand.check_keys_existance()
     |> Redis.with_pool(@pool_name, &(&1 === 2))
   end
 
   defp load_policy_windows(routing_val, endpoint) do
     routing_val
-    |> KeyBuilder.build_policy_windows_keys(endpoint)
+    |> KeyBuilder.build_policy_windows(endpoint)
     |> RedisCommand.fetch_policy_windows_with_keys()
     |> Redis.with_pool(@pool_name, & &1)
   end
@@ -53,9 +53,10 @@ defmodule LolApi.RateLimiter do
   @doc """
   Caches windows durations and their limits in Redis
   """
-  def cache_policy_defs(header_entries, routing_val, endpoint) do
-    header_entries
-    |> HeadersMapper.group_by_routing_endpoint_and_type(routing_val, endpoint)
+  @spec cache_policy_defs([LimitEntry.t()]) :: :ok
+  def cache_policy_defs(limit_entries) do
+    limit_entries
+    |> Enum.group_by(& &1.limit_type)
     |> RedisCommand.build_policy_mset_command()
     |> Redis.with_pool(@pool_name, & &1)
   end
