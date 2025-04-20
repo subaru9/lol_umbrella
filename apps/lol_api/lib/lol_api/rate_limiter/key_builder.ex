@@ -1,4 +1,7 @@
 defmodule LolApi.RateLimiter.KeyBuilder do
+  @moduledoc """
+  Builds a Redis-compatible keys.
+  """
   alias LolApi.RateLimiter
   alias LolApi.RateLimiter.LimitEntry
 

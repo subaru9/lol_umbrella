@@ -1,4 +1,8 @@
 defmodule LolApi.RateLimiter.HeaderParser do
+  @moduledoc """
+  Parses Riot headers with rate limiting info into LimitEntry
+  """
+  alias LolApi.RateLimiter.LimitEntry
   alias LolApi.RateLimiter.LimitEntry
 
   require Logger

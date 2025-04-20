@@ -1,5 +1,8 @@
 defmodule LolApi.RateLimiter.KeyValueBuilder do
-  alias LolApi.RateLimiter.{LimitEntry, KeyBuilder}
+  @moduledoc """
+  Build Redis compatible key with values to be used in Redis commands
+  """
+  alias LolApi.RateLimiter.{KeyBuilder, LimitEntry}
 
   @doc """
   Builds one `:policy_limit` Redis key for each `%LimitEntry{}`.

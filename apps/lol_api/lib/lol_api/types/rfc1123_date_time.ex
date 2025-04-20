@@ -1,4 +1,7 @@
 defmodule LolApi.Types.RFC1123DateTime do
+  @moduledoc """
+  Ecto type to handle RFC1123 string
+  """
   use Ecto.Type
   require Logger
 

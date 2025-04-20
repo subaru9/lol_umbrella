@@ -77,8 +77,8 @@ defmodule LolApi.RateLimiter.RedisCommand do
     List.flatten([
       "EVAL",
       script,
-      # how many from the list of keys will be in KEYS, 
-      # other will be in ARGV 
+      # how many from the list of keys will be in KEYS,
+      # other will be in ARGV
       to_string(length(counter_keys)),
       counter_keys,
       limit_keys,

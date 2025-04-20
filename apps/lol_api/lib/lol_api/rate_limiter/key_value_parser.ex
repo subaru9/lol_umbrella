@@ -1,5 +1,9 @@
 defmodule LolApi.RateLimiter.KeyValueParser do
-  alias LolApi.RateLimiter.{LimitEntry, KeyParser}
+  @moduledoc """
+  Parses Redis keys with values into LimitEntry
+  """
+
+  alias LolApi.RateLimiter.{KeyParser, LimitEntry}
 
   @doc """
   Parses a flat list returned by Redis
