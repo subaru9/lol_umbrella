@@ -3,7 +3,14 @@ defmodule LolApi.RateLimiter do
   RateLimiter context for delegating rate-limiting operations
   to the configured limiter type.
   """
-  alias LolApi.RateLimiter.{KeyBuilder, RedisCommand, LimitEntry}
+  alias LolApi.RateLimiter.{
+    HeaderParser,
+    KeyBuilder,
+    KeyValueParser,
+    LimitEntry,
+    RedisCommand
+  }
+
   alias SharedUtils.Redis
 
   @pool_name :lol_api_rate_limiter_pool
@@ -14,6 +21,8 @@ defmodule LolApi.RateLimiter do
   @type routing_val :: String.t()
   @type endpoint :: String.t()
   @type limit_type :: :app | :method
+  @type limit_entry :: LimitEntry.t()
+  @type limit_entries :: [limit_entry()]
 
   def limit_types, do: @limit_types
 
@@ -30,34 +39,44 @@ defmodule LolApi.RateLimiter do
   @spec policy_known?(routing_val(), endpoint()) :: boolean() | {:error, ErrorMessage.t()}
   def policy_known?(routing_val, endpoint) do
     routing_val
-    |> KeyBuilder.build_policy_windows(endpoint)
+    |> KeyBuilder.build_policy_window_keys(endpoint)
     |> RedisCommand.check_keys_existance()
     |> Redis.with_pool(@pool_name, &(&1 === 2))
   end
 
-  defp load_policy_windows(routing_val, endpoint) do
+  @doc """
+  Using Lua script fetches policy windows keys with durations
+  and parses them into `[%LimitEntry{}]` for further processing
+  """
+  @spec load_policy_windows(routing_val(), endpoint()) :: limit_entries
+  def load_policy_windows(routing_val, endpoint) do
     routing_val
-    |> KeyBuilder.build_policy_windows(endpoint)
-    |> RedisCommand.fetch_policy_windows_with_keys()
+    |> KeyBuilder.build_policy_window_keys(endpoint)
+    |> RedisCommand.build_policy_window_command()
     |> Redis.with_pool(@pool_name, & &1)
+    |> KeyValueParser.parse_policy_windows()
   end
 
-  def track_request(routing_val, endpoint, riot_headers) do
+  def track_request(routing_val, endpoint, resp_headers) do
     if policy_known?(routing_val, endpoint) do
-      # operational phase
+      # operational branch
+      load_policy_windows(routing_val, endpoint)
     else
       # bootstrap phase
+      with limit_entries <- HeaderParser.parse(resp_headers),
+           :ok <- cache_policy_defs(limit_entries) do
+        {:ok, :allowed}
+      end
     end
   end
 
   @doc """
   Caches windows durations and their limits in Redis
   """
-  @spec cache_policy_defs([LimitEntry.t()]) :: :ok
+  @spec cache_policy_defs([LimitEntry.t()]) :: :ok | {:error, ErrorMessage.t()}
   def cache_policy_defs(limit_entries) do
     limit_entries
-    |> Enum.group_by(& &1.limit_type)
     |> RedisCommand.build_policy_mset_command()
-    |> Redis.with_pool(@pool_name, & &1)
+    |> Redis.with_pool(@pool_name, fn "OK" -> :ok end)
   end
 end
