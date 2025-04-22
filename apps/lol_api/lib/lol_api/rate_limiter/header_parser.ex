@@ -14,6 +14,10 @@ defmodule LolApi.RateLimiter.HeaderParser do
   @date "date"
   @retry_after "retry-after"
 
+  @header_vars %{
+    app_limit: @app_limit
+  }
+
   @type routing_val :: String.t()
   @type endpoint :: String.t()
   @type limit_type :: :app | :method
@@ -76,15 +80,34 @@ defmodule LolApi.RateLimiter.HeaderParser do
       parse_limits(map[@method_limit], map[@method_count], :method, request_time, retry_after)
   end
 
-  # partially missing
-  defp parse_limits(nil, _count, _, _, _) do
-    Logger.debug("Riot's #{@app_limit} or #{@method_limit} header is missing")
+  # limit header is missing but count header is present
+  defp parse_limits(nil = _limit_str, _count_str, _, _, _) do
+    Logger.warning(
+      "Riot's #{@app_limit} or #{@method_limit} header is missing. Can't derive window and quota."
+    )
+
     []
   end
 
-  defp parse_limits(_limit, nil, _, _, _) do
-    Logger.debug("Riot's #{@app_count} or #{@method_count} header is missing")
-    []
+  # count header is missing, limit is present
+  defp parse_limits(limit_str, nil = _count_str, type, request_time, retry_after) do
+    Logger.debug(
+      "Riot's #{@app_count} or #{@method_count} header is missing. Assuming it has value 0."
+    )
+
+    limit_by_window = limit_str |> String.split(",") |> Map.new(&parse_entry/1)
+
+    for {window_sec, count_limit} <- limit_by_window do
+      %{
+        count: 0,
+        count_limit: count_limit,
+        limit_type: type,
+        request_time: request_time,
+        window_sec: window_sec,
+        retry_after: retry_after
+      }
+      |> LimitEntry.create!()
+    end
   end
 
   # both headers are missing

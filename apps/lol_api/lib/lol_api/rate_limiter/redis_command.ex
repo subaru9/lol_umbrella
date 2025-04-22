@@ -135,8 +135,17 @@ defmodule LolApi.RateLimiter.RedisCommand do
       Enum.flat_map(policy_windows ++ limits, fn {k, v} -> [k, v] end)
   end
 
-  @spec fetch_policy_windows_with_keys(keys) :: command()
-  def fetch_policy_windows_with_keys(keys) do
+  @doc """
+  Fetches flat list of `[key, value, key, value]` using Lua script
+  ```elixir
+  [
+  "riot:v1:policy:na1:/lol/summoner:app:windows", "120,1",
+  "riot:v1:policy:na1:/lol/summoner:method:windows", "10"
+  ]
+  ```
+  """
+  @spec build_policy_window_command(keys) :: command()
+  def build_policy_window_command(keys) do
     script = """
     results={}
     for i, key in ipairs(KEYS) do

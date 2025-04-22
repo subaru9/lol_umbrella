@@ -11,8 +11,8 @@ defmodule LolApi.RateLimiter.LimitEntry do
   import Ecto.Changeset,
     only: [cast: 3, validate_number: 3, apply_action!: 2]
 
-  alias SharedUtils.RiotRouting
   alias LolApi.RateLimiter
+  alias SharedUtils.RiotRouting
 
   @type limit_type :: :app | :method
   @type t :: %__MODULE__{

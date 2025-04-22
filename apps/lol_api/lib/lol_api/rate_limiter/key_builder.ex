@@ -99,15 +99,15 @@ defmodule LolApi.RateLimiter.KeyBuilder do
 
   ## Example
 
-    iex> LolApi.RateLimiter.KeyBuilder.build_policy_windows("na1", "/lol/summoner")
+    iex> LolApi.RateLimiter.KeyBuilder.build_policy_window_keys("na1", "/lol/summoner")
     [
       "riot:v1:policy:na1:/lol/summoner:app:windows",
       "riot:v1:policy:na1:/lol/summoner:method:windows",
     ]
 
   """
-  @spec build_policy_windows(routing_val(), endpoint()) :: list(key)
-  def build_policy_windows(routing_val, endpoint) do
+  @spec build_policy_window_keys(routing_val(), endpoint()) :: list(key)
+  def build_policy_window_keys(routing_val, endpoint) do
     Enum.map(
       RateLimiter.limit_types(),
       &build(
