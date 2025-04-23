@@ -14,10 +14,6 @@ defmodule LolApi.RateLimiter.HeaderParser do
   @date "date"
   @retry_after "retry-after"
 
-  @header_vars %{
-    app_limit: @app_limit
-  }
-
   @type routing_val :: String.t()
   @type endpoint :: String.t()
   @type limit_type :: :app | :method

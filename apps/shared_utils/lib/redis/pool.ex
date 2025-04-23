@@ -42,8 +42,9 @@ defmodule SharedUtils.Redis.Pool do
   @spec with_pool(
           command :: list(),
           pool_name :: atom(),
-          on_success_fun :: function()
-        ) :: ErrorMessage.t_res()
+          on_success_fun :: (any() -> r)
+        ) :: r | {:error, ErrorMessage.t()}
+        when r: var
   def with_pool(command, pool_name, on_success_fun) do
     :poolboy.transaction(pool_name, fn pid ->
       case Redix.command(pid, command) do

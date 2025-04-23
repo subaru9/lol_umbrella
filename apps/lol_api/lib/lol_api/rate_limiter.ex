@@ -23,6 +23,9 @@ defmodule LolApi.RateLimiter do
   @type limit_type :: :app | :method
   @type limit_entry :: LimitEntry.t()
   @type limit_entries :: [limit_entry()]
+  @type allowed :: {:ok, :allowed}
+  @type throttled :: {:error, :throttled, pos_integer()}
+  @type resp_headers :: [{String.t(), String.t()}]
 
   def limit_types, do: @limit_types
 
@@ -36,12 +39,12 @@ defmodule LolApi.RateLimiter do
     |> Redis.with_pool(@pool_name, & &1)
   end
 
-  @spec policy_known?(routing_val(), endpoint()) :: boolean() | {:error, ErrorMessage.t()}
+  @spec policy_known?(routing_val(), endpoint()) :: {:ok, boolean()} | {:error, ErrorMessage.t()}
   def policy_known?(routing_val, endpoint) do
     routing_val
     |> KeyBuilder.build_policy_window_keys(endpoint)
     |> RedisCommand.check_keys_existance()
-    |> Redis.with_pool(@pool_name, &(&1 === 2))
+    |> Redis.with_pool(@pool_name, &{:ok, &1 === 2})
   end
 
   @doc """
@@ -57,16 +60,25 @@ defmodule LolApi.RateLimiter do
     |> KeyValueParser.parse_policy_windows()
   end
 
+  @spec track_request(routing_val, endpoint, resp_headers) ::
+          allowed | throttled | {:error, ErrorMessage.t()}
   def track_request(routing_val, endpoint, resp_headers) do
-    if policy_known?(routing_val, endpoint) do
-      # operational branch
-      load_policy_windows(routing_val, endpoint)
-    else
-      # bootstrap phase
-      with limit_entries <- HeaderParser.parse(resp_headers),
-           :ok <- cache_policy_defs(limit_entries) do
+    case policy_known?(routing_val, endpoint) do
+      {:ok, true} ->
+        load_policy_windows(routing_val, endpoint)
+        |> RedisCommand.check_and_increment_from_entries()
+        |> Redis.with_pool(@pool_name, fn
+          ["allowed"] -> {:ok, :allowed}
+          ["throttled", ttl] -> {:error, :throttled, ttl}
+        end)
+
+      {:ok, false} ->
+        limit_entries = HeaderParser.parse(resp_headers)
+        :ok = cache_policy_defs(limit_entries)
         {:ok, :allowed}
-      end
+
+      {:error, _} = err ->
+        err
     end
   end
 

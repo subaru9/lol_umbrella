@@ -2,12 +2,12 @@ defmodule LolApi.RateLimiter.RedisCommand do
   @moduledoc """
   Domain-aware redis commands
   """
-  alias LolApi.RateLimiter.KeyValueBuilder
-  alias LolApi.RateLimiter.LimitEntry
+  alias LolApi.RateLimiter.{KeyBuilder, KeyValueBuilder, LimitEntry}
 
   @type keys :: list(String.t())
   @type ttls :: list(non_neg_integer())
   @type command :: [String.t()]
+  @type limit_entries :: [LimitEntry.t()]
 
   @doc """
   Atomic operation with Lua script needed for rate limiter.
@@ -37,53 +37,6 @@ defmodule LolApi.RateLimiter.RedisCommand do
     [
       "EXISTS" | keys
     ]
-  end
-
-  @doc """
-  Atomically checks rate limit counters against their limits, and updates them if allowed.
-
-  ## Arguments
-
-  - `counter_keys`: Redis keys tracking request counts per window.
-  - `limit_keys`: Redis keys storing the configured limit values.
-  - `ttls`: TTLs (in seconds) for each counter key’s window.
-  """
-  @spec check_and_increment(keys, keys, ttls) :: command()
-  def check_and_increment(counter_keys, limit_keys, ttls) do
-    script =
-      """
-      for i = 1, #KEYS do
-        local count = tonumber(redis.call("GET", KEYS[i]) or "0")
-        local limit = tonumber(redis.call("GET", ARGV[i]) or "0")
-
-        if count >= limit then
-          local ttl = redis.call("TTL", KEYS[i])
-          return {"throttled", ttl}
-        end
-      end
-
-      -- passed all checks, now increment + expire if needed
-      for i = 1, #KEYS do
-        local ttl = tonumber(ARGV[i + #KEYS])
-        local count = redis.call("INCR", KEYS[i])
-        if count == 1 then
-          redis.call("EXPIRE", KEYS[i], ttl)
-        end
-      end
-
-      return {"allowed"}
-      """
-
-    List.flatten([
-      "EVAL",
-      script,
-      # how many from the list of keys will be in KEYS,
-      # other will be in ARGV
-      to_string(length(counter_keys)),
-      counter_keys,
-      limit_keys,
-      Enum.map(ttls, &to_string/1)
-    ])
   end
 
   @doc """
@@ -162,5 +115,109 @@ defmodule LolApi.RateLimiter.RedisCommand do
       to_string(length(keys)),
       keys
     ]
+  end
+
+  @doc """
+  Atomically builds the Redis EVAL command from a list of `%LimitEntry{}` structs.
+
+  ## Example
+
+      iex> entries = [
+      ...>   %LolApi.RateLimiter.LimitEntry{
+      ...>     routing_val: "na1",
+      ...>     endpoint: "/lol/summoner",
+      ...>     limit_type: :app,
+      ...>     window_sec: 120,
+      ...>     count_limit: 100
+      ...>   },
+      ...>   %LolApi.RateLimiter.LimitEntry{
+      ...>     routing_val: "na1",
+      ...>     endpoint: "/lol/summoner",
+      ...>     limit_type: :app,
+      ...>     window_sec: 1,
+      ...>     count_limit: 20
+      ...>   },
+      ...>   %LolApi.RateLimiter.LimitEntry{
+      ...>     routing_val: "na1",
+      ...>     endpoint: "/lol/summoner",
+      ...>     limit_type: :method,
+      ...>     window_sec: 10,
+      ...>     count_limit: 50
+      ...>   }
+      ...> ]
+      iex> result = LolApi.RateLimiter.RedisCommand.check_and_increment_from_entries(entries)
+      iex> [
+      ...>   "EVAL",
+      ...>   _script,
+      ...>   "3",
+      ...>   "lol_api:v1:live:na1:/lol/summoner:method:window:10",
+      ...>   "lol_api:v1:live:na1:/lol/summoner:app:window:1",
+      ...>   "lol_api:v1:live:na1:/lol/summoner:app:window:120",
+      ...>   "riot:v1:policy:na1:/lol/summoner:method:window:10:limit",
+      ...>   "riot:v1:policy:na1:/lol/summoner:app:window:1:limit",
+      ...>   "riot:v1:policy:na1:/lol/summoner:app:window:120:limit",
+      ...>   "10",
+      ...>   "1",
+      ...>   "120"
+      ...> ] = result
+  """
+  @spec check_and_increment_from_entries(limit_entries()) :: command()
+  def check_and_increment_from_entries(limit_entries) do
+    {counters, limits, ttls} = prepare_check_payload(limit_entries)
+
+    check_and_increment(counters, limits, ttls)
+  end
+
+  @spec check_and_increment(keys, keys, ttls) :: command()
+  defp check_and_increment(counter_keys, limit_keys, ttls) do
+    script =
+      """
+      for i = 1, #KEYS do
+        local count = tonumber(redis.call("GET", KEYS[i]) or "0")
+        local limit = tonumber(redis.call("GET", ARGV[i]) or "0")
+
+        if count >= limit then
+          local ttl = redis.call("TTL", KEYS[i])
+          return {"throttled", ttl}
+        end
+      end
+
+      -- passed all checks, now increment + expire if needed
+      for i = 1, #KEYS do
+        local ttl = tonumber(ARGV[i + #KEYS])
+        local count = redis.call("INCR", KEYS[i])
+        if count == 1 then
+          redis.call("EXPIRE", KEYS[i], ttl)
+        end
+      end
+
+      return {"allowed"}
+      """
+
+    List.flatten([
+      "EVAL",
+      script,
+      # how many from the list of keys will be in KEYS,
+      # other will be in ARGV
+      to_string(length(counter_keys)),
+      # Redis keys tracking request counts per window.
+      counter_keys,
+      # Redis keys storing the limit values.
+      limit_keys,
+      # TTLs (in seconds) for each counter key’s window.
+      Enum.map(ttls, &to_string/1)
+    ])
+  end
+
+  @spec prepare_check_payload(limit_entries) :: {keys, keys, ttls}
+  defp prepare_check_payload(limit_entries) do
+    Enum.reduce(limit_entries, {[], [], []}, fn entry,
+                                                {live_counter_acc, policy_limit_acc, windows_acc} ->
+      {
+        [KeyBuilder.build(:live_counter, entry) | live_counter_acc],
+        [KeyBuilder.build(:policy_limit, entry) | policy_limit_acc],
+        [entry.window_sec | windows_acc]
+      }
+    end)
   end
 end
