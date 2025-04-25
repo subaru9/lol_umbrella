@@ -5,6 +5,7 @@ defmodule LolApi.RateLimiter.RedisCommand do
   alias LolApi.RateLimiter.{KeyBuilder, KeyValueBuilder, LimitEntry}
 
   @type keys :: list(String.t())
+  @type window_keys :: list(String.t())
   @type ttls :: list(non_neg_integer())
   @type command :: [String.t()]
   @type limit_entries :: [LimitEntry.t()]
@@ -79,7 +80,7 @@ defmodule LolApi.RateLimiter.RedisCommand do
         "riot:v1:policy:na1:/lol/summoner:method:window:10:limit", "50"
       ]
   """
-  @spec build_policy_mset_command([LimitEntry.t()]) :: command()
+  @spec build_policy_mset_command(limit_entries()) :: command()
   def build_policy_mset_command(entries) do
     policy_windows = KeyValueBuilder.build_policy_window_entries(entries)
     limits = KeyValueBuilder.build_policy_limit_entries(entries)
@@ -97,8 +98,8 @@ defmodule LolApi.RateLimiter.RedisCommand do
   ]
   ```
   """
-  @spec build_policy_window_command(keys) :: command()
-  def build_policy_window_command(keys) do
+  @spec get_keys_with_values(keys) :: command()
+  def get_keys_with_values(keys) do
     script = """
     results={}
     for i, key in ipairs(KEYS) do
@@ -161,15 +162,15 @@ defmodule LolApi.RateLimiter.RedisCommand do
       ...>   "120"
       ...> ] = result
   """
-  @spec check_and_increment_from_entries(limit_entries()) :: command()
-  def check_and_increment_from_entries(limit_entries) do
+  @spec check_and_increment(limit_entries()) :: command()
+  def check_and_increment(limit_entries) do
     {counters, limits, ttls} = prepare_check_payload(limit_entries)
 
-    check_and_increment(counters, limits, ttls)
+    check_and_increment_from_keys(counters, limits, ttls)
   end
 
-  @spec check_and_increment(keys, keys, ttls) :: command()
-  defp check_and_increment(counter_keys, limit_keys, ttls) do
+  @spec check_and_increment_from_keys(keys, keys, ttls) :: command()
+  defp check_and_increment_from_keys(counter_keys, limit_keys, ttls) do
     script =
       """
       for i = 1, #KEYS do

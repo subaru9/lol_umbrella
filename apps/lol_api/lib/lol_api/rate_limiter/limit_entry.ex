@@ -11,14 +11,14 @@ defmodule LolApi.RateLimiter.LimitEntry do
   import Ecto.Changeset,
     only: [cast: 3, validate_number: 3, apply_action!: 2]
 
-  alias LolApi.RateLimiter
+  alias LolApi.RateLimiter.Counter
   alias SharedUtils.RiotRouting
 
   @type limit_type :: :app | :method
   @type t :: %__MODULE__{
           routing_val: RiotRouting.routing_val_t() | nil,
           endpoint: String.t() | nil,
-          limit_type: RateLimiter.limit_type() | nil,
+          limit_type: Counter.limit_type() | nil,
           window_sec: pos_integer() | nil,
           count_limit: pos_integer() | nil,
           count: non_neg_integer(),
@@ -29,7 +29,7 @@ defmodule LolApi.RateLimiter.LimitEntry do
   @type attrs :: %{
           optional(:routing_val) => RiotRouting.routing_val_t() | String.t(),
           optional(:endpoint) => String.t(),
-          optional(:limit_type) => RateLimiter.limit_type() | String.t(),
+          optional(:limit_type) => Counter.limit_type() | String.t(),
           optional(:window_sec) => pos_integer() | String.t(),
           optional(:count_limit) => pos_integer() | String.t(),
           optional(:count) => non_neg_integer() | String.t(),
@@ -52,7 +52,7 @@ defmodule LolApi.RateLimiter.LimitEntry do
   embedded_schema do
     field :endpoint, :string
     field :routing_val, Ecto.Enum, values: RiotRouting.routing_vals()
-    field :limit_type, Ecto.Enum, values: RateLimiter.limit_types()
+    field :limit_type, Ecto.Enum, values: Counter.limit_types()
 
     field :window_sec, :integer
     field :count_limit, :integer

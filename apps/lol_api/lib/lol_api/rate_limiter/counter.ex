@@ -1,5 +1,18 @@
 defmodule LolApi.RateLimiter.Counter do
   @moduledoc """
+  Handles rate-limiting logic using atomic Redis counters.
+
+  This module enforces request quotas by:
+
+    • Checking if a valid policy exists in Redis
+    • Caching policy from Riot headers if missing (bootstrap phase)
+    • Tracking requests by incrementing live counters (operational phase)
+
+  It supports multiple time windows and limit types (`:app` and `:method`)
+  per `{routing_val, endpoint}` combination.
+
+  The result is a two-phase rate limiter that respects Riot’s dynamic limits
+  while minimizing Redis roundtrips.
   """
   alias LolApi.RateLimiter.{
     HeaderParser,
@@ -73,13 +86,22 @@ defmodule LolApi.RateLimiter.Counter do
         retry_after: nil
       }
   """
-  @spec load_policy_windows(routing_val(), endpoint()) :: limit_entries
+  @spec load_policy_windows(routing_val(), endpoint()) ::
+          limit_entries | {:error, ErrorMessage.t()}
   def load_policy_windows(routing_val, endpoint) do
     routing_val
     |> KeyBuilder.build_policy_window_keys(endpoint)
-    |> RedisCommand.build_policy_window_command()
+    |> RedisCommand.get_keys_with_values()
     |> Redis.with_pool(@pool_name, & &1)
     |> KeyValueParser.parse_policy_windows()
+  end
+
+  def get_policy(routing_val, endpoint) do
+    load_policy_windows(routing_val, endpoint)
+    |> Enum.map(&KeyBuilder.build(:policy_limit, &1))
+    |> RedisCommand.get_keys_with_values()
+    |> Redis.with_pool(@pool_name, & &1)
+    |> KeyValueParser.parse_policy_limits()
   end
 
   @spec track_request(routing_val, endpoint, resp_headers) ::
@@ -87,16 +109,19 @@ defmodule LolApi.RateLimiter.Counter do
   def track_request(routing_val, endpoint, resp_headers) do
     case policy_known?(routing_val, endpoint) do
       {:ok, true} ->
-        load_policy_windows(routing_val, endpoint)
-        |> RedisCommand.check_and_increment_from_entries()
+        get_policy(routing_val, endpoint)
+        |> RedisCommand.check_and_increment()
         |> Redis.with_pool(@pool_name, fn
           ["allowed"] -> {:ok, :allowed}
           ["throttled", ttl] -> {:error, :throttled, ttl}
         end)
 
       {:ok, false} ->
-        limit_entries = HeaderParser.parse(resp_headers)
-        :ok = set_policy(limit_entries)
+        :ok =
+          resp_headers
+          |> HeaderParser.parse()
+          |> set_policy()
+
         {:ok, :allowed}
 
       {:error, _} = err ->
@@ -118,14 +143,20 @@ defmodule LolApi.RateLimiter.Counter do
           endpoint: "/lol/summoner",
           limit_type: :app,
           window_sec: 1,
-          count_limit: 20
+          count_limit: 20,
+          count: 0,
+          request_time: nil,
+          retry_after: nil
         },
         %LimitEntry{
           routing_val: "na1",
           endpoint: "/lol/summoner",
           limit_type: :app,
           window_sec: 120,
-          count_limit: 100
+          count_limit: 100,
+          count: 0,
+          request_time: nil,
+          retry_after: nil
         }
       ]
 

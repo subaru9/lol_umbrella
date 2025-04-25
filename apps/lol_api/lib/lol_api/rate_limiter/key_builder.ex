@@ -2,8 +2,7 @@ defmodule LolApi.RateLimiter.KeyBuilder do
   @moduledoc """
   Builds a Redis-compatible keys.
   """
-  alias LolApi.RateLimiter
-  alias LolApi.RateLimiter.LimitEntry
+  alias LolApi.RateLimiter.{Counter, LimitEntry}
 
   @our_prefix "lol_api"
   @riot_prefix "riot"
@@ -109,7 +108,7 @@ defmodule LolApi.RateLimiter.KeyBuilder do
   @spec build_policy_window_keys(routing_val(), endpoint()) :: list(key)
   def build_policy_window_keys(routing_val, endpoint) do
     Enum.map(
-      RateLimiter.limit_types(),
+      Counter.limit_types(),
       &build(
         :policy_windows,
         LimitEntry.create!(%{routing_val: routing_val, endpoint: endpoint, limit_type: &1})
