@@ -1,10 +1,26 @@
 defmodule LolApi.RateLimiter.LimitEntry do
   @moduledoc """
-  Represents a single rate limit window entry.
+  Defines the canonical structure for a single rate-limit rule.
 
-  Used by both the bootstrap phase (from Riot headers)
-  and the operational phase (from Redis state),
-  header parsing, Redis I/O and rate logic
+  Used throughout the system to represent limits from any source —
+  whether parsed from Riot headers (bootstrap) or fetched from Redis keys (operational).
+
+  Each `%LimitEntry{}` describes:
+
+    • Which `{routing_val, endpoint, limit_type}` it applies to
+    • The window size (`window_sec`) in seconds
+    • How many requests are allowed (`count_limit`)
+    • How many requests have occurred so far (`count`)
+    • Optional metadata from the original response (`request_time`, `retry_after`)
+
+  This struct is used by all rate-limiting modules:
+    - `HeaderParser`: parses Riot headers into entries
+    - `RedisCommand`: serializes entries to Redis
+    - `KeyBuilder`: generates keys from entries
+    - `KeyValueParser`: parses Redis keys into entries
+    - `Counter`: enforces limits using entries
+
+  It is the shared language of the rate-limiting system.
   """
   use Ecto.Schema
 
