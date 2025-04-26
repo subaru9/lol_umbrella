@@ -1,8 +1,9 @@
 defmodule LolApi.Base do
+  alias LolApi.Config
   alias SharedUtils.JSON
 
   def request(url) do
-    if Mix.env() === :test do
+    if Config.current_env() === :test do
       url
       |> HTTPSandbox.get_response([], [])
       |> handle_response(url)

@@ -38,7 +38,7 @@ defmodule LolWeb.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:phoenix, github: "phoenixframework/phoenix", override: true},
+      {:phoenix, github: "phoenixframework/phoenix", tag: "v1.8.0-rc.1", override: true},
       {:prometheus_telemetry, "~> 0.4"},
       {:phoenix_ecto, "~> 4.5"},
       {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},

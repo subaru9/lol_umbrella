@@ -14,6 +14,7 @@ defmodule LolApi.RateLimiter.Counter do
   The result is a two-phase rate limiter that respects Riot’s dynamic limits
   while minimizing Redis roundtrips.
   """
+  alias LolApi.RateLimiter
   alias LolApi.RateLimiter.{
     HeaderParser,
     KeyBuilder,
@@ -25,20 +26,17 @@ defmodule LolApi.RateLimiter.Counter do
   alias SharedUtils.Redis
 
   @pool_name :lol_api_rate_limiter_pool
-  @limit_types [:app, :method]
 
   @type redis_key :: String.t()
   @type ttl_seconds :: non_neg_integer()
   @type routing_val :: String.t()
   @type endpoint :: String.t()
-  @type limit_type :: :app | :method
+  @type limit_type :: RateLimiter.limit_type()
   @type limit_entry :: LimitEntry.t()
   @type limit_entries :: [limit_entry()]
   @type allowed :: {:ok, :allowed}
   @type throttled :: {:error, :throttled, pos_integer()}
   @type resp_headers :: [{String.t(), String.t()}]
-
-  def limit_types, do: @limit_types
 
   # add telemetry later
   # Counter: how many times each key is incremented

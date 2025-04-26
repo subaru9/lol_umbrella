@@ -3,7 +3,6 @@ defmodule LolApi.RateLimiter.HeaderParser do
   Parses Riot headers with rate limiting info into LimitEntry
   """
   alias LolApi.RateLimiter.LimitEntry
-  alias LolApi.RateLimiter.LimitEntry
 
   require Logger
 
@@ -14,9 +13,6 @@ defmodule LolApi.RateLimiter.HeaderParser do
   @date "date"
   @retry_after "retry-after"
 
-  @type routing_val :: String.t()
-  @type endpoint :: String.t()
-  @type limit_type :: :app | :method
   @type headers :: [{String.t(), String.t()}]
 
   @doc """

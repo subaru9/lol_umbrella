@@ -1,8 +1,13 @@
 defmodule LolApi.Config do
-  def api_key!(), do: Application.fetch_env!(:lol_api, :api_key)
+  @moduledoc false
+
+  @app :lol_api
+
+  def api_key!, do: Application.fetch_env!(:lol_api, :api_key)
+  def current_env, do: Application.fetch_env!(@app, :env)
 
   def rate_limiter_redis_pool_opts do
-    :lol_api
+    @app
     |> Application.fetch_env!(:rate_limiter)
     |> Keyword.fetch!(:redis_pool)
   end
