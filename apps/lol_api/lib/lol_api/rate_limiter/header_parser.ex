@@ -2,10 +2,12 @@ defmodule LolApi.RateLimiter.HeaderParser do
   @moduledoc """
   Parses Riot headers with rate limiting info into LimitEntry
   """
+  alias LolApi.RateLimiter
   alias LolApi.RateLimiter.LimitEntry
 
   require Logger
 
+  @limit_type "x-rate-limit-type"
   @app_limit "x-app-rate-limit"
   @app_count "x-app-rate-limit-count"
   @method_limit "x-method-rate-limit"
@@ -14,6 +16,49 @@ defmodule LolApi.RateLimiter.HeaderParser do
   @retry_after "retry-after"
 
   @type headers :: [{String.t(), String.t()}]
+  @type routing_val :: RateLimiter.routing_val()
+  @type endpoint :: RateLimiter.endpoint()
+
+  def retry_after_name, do: @retry_after
+  def limit_type_name, do: @limit_type
+
+  @doc """
+  Builds a minimal `%LimitEntry{}` representing a cooldown
+  based on the Riot response headers.
+
+  ## Examples
+
+      iex> headers = [
+      ...>   {"x-rate-limit-type", "app"},
+      ...>   {"retry-after", "42"},
+      ...>   {"date", "Tue, 01 Apr 2025 18:15:26 GMT"}
+      ...> ]
+      iex> LolApi.RateLimiter.HeaderParser.extract_cooldown(headers, "na1", "/lol/summoner")
+      %LolApi.RateLimiter.LimitEntry{
+        routing_val: :na1,
+        endpoint: "/lol/summoner",
+        limit_type: :app,
+        retry_after: 42,
+        request_time: ~U[2025-04-01 18:15:26Z],
+        window_sec: nil,
+        count_limit: nil,
+        count: 0
+      }
+  """
+  @spec extract_cooldown(headers(), routing_val(), endpoint()) :: LimitEntry.t()
+  def extract_cooldown(resp_headers, routing_val, endpoint) do
+    headers = Enum.into(resp_headers, %{})
+
+    arg = %{
+      limit_type: headers[@limit_type],
+      request_time: headers[@date],
+      retry_after: headers[@retry_after],
+      endpoint: endpoint,
+      routing_val: routing_val
+    }
+
+    LimitEntry.create!(arg)
+  end
 
   @doc """
   Parse rate limit headers from Riot to limit entries.

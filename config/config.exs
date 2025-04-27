@@ -7,9 +7,10 @@
 # all use the same configuration file. If you want different
 # configurations or dependencies per app, it is best to
 # move said applications out of the umbrella.
-import Config
+import Config, only: [config: 2, config: 3, import_config: 1, config_env: 0, config_target: 0]
 
 # Configure Mix tasks and generators
+config :lol_api, :env, config_env()
 config :lol_api, :api_key, System.get_env("RIOT_API_KEY")
 
 config :lol_api, :rate_limiter,

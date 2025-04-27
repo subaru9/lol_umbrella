@@ -11,4 +11,8 @@ defmodule LolApi.Config do
     |> Application.fetch_env!(:rate_limiter)
     |> Keyword.fetch!(:redis_pool)
   end
+
+  def redis_pool_name do
+    Map.fetch!(rate_limiter_redis_pool_opts(), :pool_name)
+  end
 end

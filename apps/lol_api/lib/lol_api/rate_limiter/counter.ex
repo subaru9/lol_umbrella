@@ -15,7 +15,9 @@ defmodule LolApi.RateLimiter.Counter do
   while minimizing Redis roundtrips.
   """
   alias LolApi.RateLimiter
+
   alias LolApi.RateLimiter.{
+    Cooldown,
     HeaderParser,
     KeyBuilder,
     KeyValueParser,
@@ -94,6 +96,7 @@ defmodule LolApi.RateLimiter.Counter do
     |> KeyValueParser.parse_policy_windows()
   end
 
+  @spec get_policy(routing_val(), endpoint()) :: limit_entries()
   def get_policy(routing_val, endpoint) do
     load_policy_windows(routing_val, endpoint)
     |> Enum.map(&KeyBuilder.build(:policy_limit, &1))
@@ -119,6 +122,8 @@ defmodule LolApi.RateLimiter.Counter do
           resp_headers
           |> HeaderParser.parse()
           |> set_policy()
+
+        Cooldown.maybe_set(resp_headers, routing_val, endpoint)
 
         {:ok, :allowed}
 

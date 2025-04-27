@@ -4,11 +4,33 @@ defmodule LolApi.RateLimiter.RedisCommand do
   """
   alias LolApi.RateLimiter.{KeyBuilder, KeyValueBuilder, LimitEntry}
 
-  @type keys :: list(String.t())
+  @type key :: String.t()
+  @type keys :: list(key)
   @type window_keys :: list(String.t())
-  @type ttls :: list(non_neg_integer())
+  @type ttl :: non_neg_integer()
+  @type ttls :: list(ttl)
   @type command :: [String.t()]
   @type limit_entries :: [LimitEntry.t()]
+
+  @doc """
+  Builds Redis `SETEX` command for cooldown.
+
+  ## Examples
+
+      iex> RedisCommand.build_cooldown_setex_command("lol_api:v1:cooldown:na1:application", 120)
+      ["SETEX", "lol_api:v1:cooldown:na1:application", "120", "120"]
+  """
+  @spec build_cooldown_setex_command(key, ttl) :: command()
+  def build_cooldown_setex_command(key, ttl) do
+    ttl_str = to_string(ttl)
+
+    [
+      "SETEX",
+      key,
+      ttl_str,
+      ttl_str
+    ]
+  end
 
   @doc """
   Atomic operation with Lua script needed for rate limiter.
