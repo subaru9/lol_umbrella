@@ -150,7 +150,7 @@ defmodule LolApi.RateLimiter.KeyBuilder do
   @spec build_policy_window_keys(routing_val(), endpoint()) :: list(key)
   def build_policy_window_keys(routing_val, endpoint) do
     Enum.map(
-      RateLimiter.limit_types(),
+      RateLimiter.counter_limit_types(),
       &build(
         :policy_windows,
         LimitEntry.create!(%{routing_val: routing_val, endpoint: endpoint, limit_type: &1})

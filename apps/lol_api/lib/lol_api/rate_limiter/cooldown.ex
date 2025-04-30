@@ -1,4 +1,7 @@
 defmodule LolApi.RateLimiter.Cooldown do
+  @moduledoc """
+  Responsible for setting and enforcing cooldown policy
+  """
   require Logger
 
   alias LolApi.Config
