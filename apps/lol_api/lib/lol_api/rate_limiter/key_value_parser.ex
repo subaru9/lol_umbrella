@@ -13,14 +13,14 @@ defmodule LolApi.RateLimiter.KeyValueParser do
   ## Example
 
       iex> flat = [
-      ...>   "riot:v1:policy:na1:/lol/summoner:app:windows", "120,1",
+      ...>   "riot:v1:policy:na1:/lol/summoner:application:windows", "120,1",
       ...>   "riot:v1:policy:na1:/lol/summoner:method:windows", "10"
       ...> ]
       iex> LolApi.RateLimiter.KeyValueParser.parse_policy_windows(flat)
       [
         %LolApi.RateLimiter.LimitEntry{
           endpoint: "/lol/summoner",
-          limit_type: :app,
+          limit_type: :application,
           routing_val: :na1,
           window_sec: 120,
           count: 0,
@@ -30,7 +30,7 @@ defmodule LolApi.RateLimiter.KeyValueParser do
         },
         %LolApi.RateLimiter.LimitEntry{
           endpoint: "/lol/summoner",
-          limit_type: :app,
+          limit_type: :application,
           routing_val: :na1,
           window_sec: 1,
           count: 0,
@@ -72,8 +72,8 @@ defmodule LolApi.RateLimiter.KeyValueParser do
   ## Examples
 
       iex> flat_list = [
-      ...>   "riot:v1:policy:na1:/lol/summoner:app:window:1:limit", "20",
-      ...>   "riot:v1:policy:na1:/lol/summoner:app:window:120:limit", "100",
+      ...>   "riot:v1:policy:na1:/lol/summoner:application:window:1:limit", "20",
+      ...>   "riot:v1:policy:na1:/lol/summoner:application:window:120:limit", "100",
       ...>   "riot:v1:policy:na1:/lol/summoner:method:window:10:limit", "50"
       ...> ]
       iex> LolApi.RateLimiter.KeyValueParser.parse_policy_limits(flat_list)
@@ -81,7 +81,7 @@ defmodule LolApi.RateLimiter.KeyValueParser do
         %LolApi.RateLimiter.LimitEntry{
           routing_val: "na1",
           endpoint: "/lol/summoner",
-          limit_type: :app,
+          limit_type: :application,
           window_sec: 1,
           count_limit: 20,
           count: 0,
@@ -91,7 +91,7 @@ defmodule LolApi.RateLimiter.KeyValueParser do
         %LolApi.RateLimiter.LimitEntry{
           routing_val: "na1",
           endpoint: "/lol/summoner",
-          limit_type: :app,
+          limit_type: :application,
           window_sec: 120,
           count_limit: 100,
           count: 0,

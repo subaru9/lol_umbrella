@@ -52,24 +52,24 @@ defmodule LolApi.RateLimiter.KeyBuilder do
       iex> entry = %LolApi.RateLimiter.LimitEntry{
       ...>   routing_val: "euw1",
       ...>   endpoint: "/lol/match/v5/matches",
-      ...>   limit_type: :app,
+      ...>   limit_type: :application,
       ...>   window_sec: 120,
       ...>   retry_after: 60
       ...> }
       iex> LolApi.RateLimiter.KeyBuilder.build(:policy_limit, entry)
-      "riot:v1:policy:euw1:/lol/match/v5/matches:app:window:120:limit"
+      "riot:v1:policy:euw1:/lol/match/v5/matches:application:window:120:limit"
       iex>
       iex> LolApi.RateLimiter.KeyBuilder.build(:policy_windows, entry)
-      "riot:v1:policy:euw1:/lol/match/v5/matches:app:windows"
+      "riot:v1:policy:euw1:/lol/match/v5/matches:application:windows"
       iex>
       iex> LolApi.RateLimiter.KeyBuilder.build(:live_counter, entry)
-      "lol_api:v1:live:euw1:/lol/match/v5/matches:app:window:120"
+      "lol_api:v1:live:euw1:/lol/match/v5/matches:application:window:120"
       iex>
       iex> LolApi.RateLimiter.KeyBuilder.build(:authoritative_counter, entry)
-      "riot:v1:authoritative:euw1:/lol/match/v5/matches:app:window:120"
+      "riot:v1:authoritative:euw1:/lol/match/v5/matches:application:window:120"
       iex>
       iex> LolApi.RateLimiter.KeyBuilder.build(:cooldown, entry)
-      "lol_api:v1:cooldown:euw1:app"
+      "lol_api:v1:cooldown:euw1:application"
 
       iex> method_entry = %LolApi.RateLimiter.LimitEntry{
       ...>   routing_val: "euw1",
@@ -137,13 +137,13 @@ defmodule LolApi.RateLimiter.KeyBuilder do
   @doc """
   Builds all `:policy_windows` keys for a given `{routing_val, endpoint}` pair.
 
-  One key is created per limit type (`:app`, `:method`).
+  One key is created per limit type (`:application`, `:method`).
 
   ## Example
 
       iex> LolApi.RateLimiter.KeyBuilder.build_policy_window_keys("na1", "/lol/summoner")
       [
-        "riot:v1:policy:na1:/lol/summoner:app:windows",
+        "riot:v1:policy:na1:/lol/summoner:application:windows",
         "riot:v1:policy:na1:/lol/summoner:method:windows"
       ]
   """

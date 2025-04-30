@@ -73,14 +73,14 @@ defmodule LolApi.RateLimiter.RedisCommand do
       ...>   %LolApi.RateLimiter.LimitEntry{
       ...>     routing_val: "na1",
       ...>     endpoint: "/lol/summoner",
-      ...>     limit_type: :app,
+      ...>     limit_type: :application,
       ...>     window_sec: 120,
       ...>     count_limit: 100
       ...>   },
       ...>   %LolApi.RateLimiter.LimitEntry{
       ...>     routing_val: "na1",
       ...>     endpoint: "/lol/summoner",
-      ...>     limit_type: :app,
+      ...>     limit_type: :application,
       ...>     window_sec: 1,
       ...>     count_limit: 20
       ...>   },
@@ -95,10 +95,10 @@ defmodule LolApi.RateLimiter.RedisCommand do
       iex> LolApi.RateLimiter.RedisCommand.build_policy_mset_command(entries)
       [
         "MSET",
-        "riot:v1:policy:na1:/lol/summoner:app:windows", "120,1",
+        "riot:v1:policy:na1:/lol/summoner:application:windows", "120,1",
         "riot:v1:policy:na1:/lol/summoner:method:windows", "10",
-        "riot:v1:policy:na1:/lol/summoner:app:window:120:limit", "100",
-        "riot:v1:policy:na1:/lol/summoner:app:window:1:limit", "20",
+        "riot:v1:policy:na1:/lol/summoner:application:window:120:limit", "100",
+        "riot:v1:policy:na1:/lol/summoner:application:window:1:limit", "20",
         "riot:v1:policy:na1:/lol/summoner:method:window:10:limit", "50"
       ]
   """
@@ -115,7 +115,7 @@ defmodule LolApi.RateLimiter.RedisCommand do
   Fetches flat list of `[key, value, key, value]` using Lua script
   ```elixir
   [
-  "riot:v1:policy:na1:/lol/summoner:app:windows", "120,1",
+  "riot:v1:policy:na1:/lol/summoner:application:windows", "120,1",
   "riot:v1:policy:na1:/lol/summoner:method:windows", "10"
   ]
   ```
@@ -149,14 +149,14 @@ defmodule LolApi.RateLimiter.RedisCommand do
       ...>   %LolApi.RateLimiter.LimitEntry{
       ...>     routing_val: "na1",
       ...>     endpoint: "/lol/summoner",
-      ...>     limit_type: :app,
+      ...>     limit_type: :application,
       ...>     window_sec: 120,
       ...>     count_limit: 100
       ...>   },
       ...>   %LolApi.RateLimiter.LimitEntry{
       ...>     routing_val: "na1",
       ...>     endpoint: "/lol/summoner",
-      ...>     limit_type: :app,
+      ...>     limit_type: :application,
       ...>     window_sec: 1,
       ...>     count_limit: 20
       ...>   },
@@ -174,11 +174,11 @@ defmodule LolApi.RateLimiter.RedisCommand do
       ...>   _script,
       ...>   "3",
       ...>   "lol_api:v1:live:na1:/lol/summoner:method:window:10",
-      ...>   "lol_api:v1:live:na1:/lol/summoner:app:window:1",
-      ...>   "lol_api:v1:live:na1:/lol/summoner:app:window:120",
+      ...>   "lol_api:v1:live:na1:/lol/summoner:application:window:1",
+      ...>   "lol_api:v1:live:na1:/lol/summoner:application:window:120",
       ...>   "riot:v1:policy:na1:/lol/summoner:method:window:10:limit",
-      ...>   "riot:v1:policy:na1:/lol/summoner:app:window:1:limit",
-      ...>   "riot:v1:policy:na1:/lol/summoner:app:window:120:limit",
+      ...>   "riot:v1:policy:na1:/lol/summoner:application:window:1:limit",
+      ...>   "riot:v1:policy:na1:/lol/summoner:application:window:120:limit",
       ...>   "10",
       ...>   "1",
       ...>   "120"

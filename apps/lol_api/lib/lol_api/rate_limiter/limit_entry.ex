@@ -27,7 +27,7 @@ defmodule LolApi.RateLimiter.LimitEntry do
   alias LolApi.RateLimiter
   alias SharedUtils.RiotRouting
 
-  @type limit_type :: :app | :method
+  @type limit_type :: :application | :method
   @type t :: %__MODULE__{
           routing_val: RiotRouting.routing_val_t() | nil,
           endpoint: String.t() | nil,
@@ -90,7 +90,7 @@ defmodule LolApi.RateLimiter.LimitEntry do
   ## Examples
 
       iex> attrs = %{
-      ...>   "limit_type" => "app",
+      ...>   "limit_type" => "application",
       ...>   "window_sec" => 120,
       ...>   "count_limit" => 100,
       ...>   "count" => 0,
@@ -98,7 +98,7 @@ defmodule LolApi.RateLimiter.LimitEntry do
       ...> }
       iex> LolApi.RateLimiter.LimitEntry.create!(attrs)
       %{
-        limit_type: :app,
+        limit_type: :application,
         window_sec: 120,
         count_limit: 100,
         count: 0,

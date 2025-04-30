@@ -8,7 +8,7 @@ defmodule LolApi.RateLimiter.Counter do
     • Caching policy from Riot headers if missing (bootstrap phase)
     • Tracking requests by incrementing live counters (operational phase)
 
-  It supports multiple time windows and limit types (`:app` and `:method`)
+  It supports multiple time windows and limit types (`:application` and `:method`)
   per `{routing_val, endpoint}` combination.
 
   The result is a two-phase rate limiter that respects Riot’s dynamic limits
@@ -70,15 +70,15 @@ defmodule LolApi.RateLimiter.Counter do
   `:policy_windows` defines window durations for each `{routing_val, endpoint, limit_type}`.
 
   Example Redis key:
-    "riot:v1:policy:na1:/lol/summoner:app:windows" => "1,120"
-    # → check 1s and 120s windows for the `:app` limit on that route
+    "riot:v1:policy:na1:/lol/summoner:application:windows" => "1,120"
+    # → check 1s and 120s windows for the `:application` limit on that route
 
   Returns a list of `%LimitEntry{}` structs like:
 
       %LolApi.RateLimiter.LimitEntry{
         routing_val: :na1,
         endpoint: "/lol/summoner",
-        limit_type: :app,
+        limit_type: :application,
         window_sec: 120,
         count: 0,
         count_limit: nil,
@@ -144,7 +144,7 @@ defmodule LolApi.RateLimiter.Counter do
         %LimitEntry{
           routing_val: "na1",
           endpoint: "/lol/summoner",
-          limit_type: :app,
+          limit_type: :application,
           window_sec: 1,
           count_limit: 20,
           count: 0,
@@ -154,7 +154,7 @@ defmodule LolApi.RateLimiter.Counter do
         %LimitEntry{
           routing_val: "na1",
           endpoint: "/lol/summoner",
-          limit_type: :app,
+          limit_type: :application,
           window_sec: 120,
           count_limit: 100,
           count: 0,
@@ -168,13 +168,13 @@ defmodule LolApi.RateLimiter.Counter do
     • `:policy_windows` — defines which window durations apply per `{routing_val, endpoint, limit_type}`.
 
         Example:
-          "riot:v1:policy:na1:/lol/summoner:app:windows" => "1,120"
+          "riot:v1:policy:na1:/lol/summoner:application:windows" => "1,120"
 
     • `:policy_limit` — defines how many requests are allowed per window.
 
         Examples:
-          "riot:v1:policy:na1:/lol/summoner:app:window:1:limit"   => "20"
-          "riot:v1:policy:na1:/lol/summoner:app:window:120:limit" => "100"
+          "riot:v1:policy:na1:/lol/summoner:application:window:1:limit"   => "20"
+          "riot:v1:policy:na1:/lol/summoner:application:window:120:limit" => "100"
 
   Together, these define the canonical policy for the operational phase.
   """

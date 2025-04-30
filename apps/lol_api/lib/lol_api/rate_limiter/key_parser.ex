@@ -20,26 +20,26 @@ defmodule LolApi.RateLimiter.KeyParser do
 
   ## Examples
 
-      iex> LolApi.RateLimiter.KeyParser.parse("riot:v1:policy:euw1:/lol/match:app:window:120:limit")
+      iex> LolApi.RateLimiter.KeyParser.parse("riot:v1:policy:euw1:/lol/match:application:window:120:limit")
       %{
         prefix: "riot",
         version: "v1",
         mode: :policy,
         routing_val: "euw1",
         endpoint: "/lol/match",
-        limit_type: :app,
+        limit_type: :application,
         window_sec: 120,
         suffix: [:limit]
       }
 
-      iex> LolApi.RateLimiter.KeyParser.parse("riot:v1:policy:euw1:/lol/match:app:windows")
+      iex> LolApi.RateLimiter.KeyParser.parse("riot:v1:policy:euw1:/lol/match:application:windows")
       %{
         prefix: "riot",
         version: "v1",
         mode: :policy,
         routing_val: "euw1",
         endpoint: "/lol/match",
-        limit_type: :app,
+        limit_type: :application,
         suffix: [:windows]
       }
   """

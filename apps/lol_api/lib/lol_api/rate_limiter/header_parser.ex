@@ -29,7 +29,7 @@ defmodule LolApi.RateLimiter.HeaderParser do
   ## Examples
 
       iex> headers = [
-      ...>   {"x-rate-limit-type", "app"},
+      ...>   {"x-rate-limit-type", "application"},
       ...>   {"retry-after", "42"},
       ...>   {"date", "Tue, 01 Apr 2025 18:15:26 GMT"}
       ...> ]
@@ -37,7 +37,7 @@ defmodule LolApi.RateLimiter.HeaderParser do
       %LolApi.RateLimiter.LimitEntry{
         routing_val: :na1,
         endpoint: "/lol/summoner",
-        limit_type: :app,
+        limit_type: :application,
         retry_after: 42,
         request_time: ~U[2025-04-01 18:15:26Z],
         window_sec: nil,
@@ -76,7 +76,7 @@ defmodule LolApi.RateLimiter.HeaderParser do
       iex> Enum.sort_by(result, &{&1.limit_type, &1.window_sec})
       [
         %LolApi.RateLimiter.LimitEntry{
-          limit_type: :app,
+          limit_type: :application,
           window_sec: 1,
           count_limit: 20,
           count: 2,
@@ -86,7 +86,7 @@ defmodule LolApi.RateLimiter.HeaderParser do
           routing_val: nil
         },
         %LolApi.RateLimiter.LimitEntry{
-          limit_type: :app,
+          limit_type: :application,
           window_sec: 120,
           count_limit: 100,
           count: 20,
@@ -113,7 +113,7 @@ defmodule LolApi.RateLimiter.HeaderParser do
     request_time = map[@date]
     retry_after = map[@retry_after]
 
-    parse_limits(map[@app_limit], map[@app_count], :app, request_time, retry_after) ++
+    parse_limits(map[@app_limit], map[@app_count], :application, request_time, retry_after) ++
       parse_limits(map[@method_limit], map[@method_count], :method, request_time, retry_after)
   end
 

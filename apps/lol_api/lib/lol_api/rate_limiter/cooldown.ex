@@ -20,12 +20,12 @@ defmodule LolApi.RateLimiter.Cooldown do
   ## Example
 
       iex> headers = [
-      ...>   {"x-rate-limit-type", "app"},
+      ...>   {"x-rate-limit-type", "application"},
       ...>   {"date", "Tue, 01 Apr 2025 18:15:26 GMT"},
       ...>   {"retry-after", "120"}
       ...> ]
       iex> LolApi.RateLimiter.Cooldown.build_key("na1", "/lol/summoner", headers)
-      "lol_api:v1:cooldown:na1:/lol/summoner:app:120"
+      "lol_api:v1:cooldown:na1:/lol/summoner:application:120"
   """
   def build_key(headers, routing_val, endpoint) do
     headers
@@ -42,7 +42,7 @@ defmodule LolApi.RateLimiter.Cooldown do
 
       iex> headers = [
       ...>   {"retry-after", "5"},
-      ...>   {"x-rate-limit-type", "app"}
+      ...>   {"x-rate-limit-type", "application"}
       ...> ]
       iex> LolApi.RateLimiter.Cooldown.create?(headers)
       true
@@ -80,7 +80,7 @@ defmodule LolApi.RateLimiter.Cooldown do
 
   ## Example
 
-      iex> Cooldown.exists?("na1", "/lol/summoner", :app)
+      iex> Cooldown.exists?("na1", "/lol/summoner", :application)
       true
   """
 
