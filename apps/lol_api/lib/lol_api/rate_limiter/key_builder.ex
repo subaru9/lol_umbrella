@@ -143,16 +143,42 @@ defmodule LolApi.RateLimiter.KeyBuilder do
 
       iex> LolApi.RateLimiter.KeyBuilder.build_policy_window_keys("na1", "/lol/summoner")
       [
-        "riot:v1:policy:na1:/lol/summoner:application:windows",
-        "riot:v1:policy:na1:/lol/summoner:method:windows"
+        "riot:v1:policy:na1:/lol/summoner:method:windows",
+        "riot:v1:policy:na1:/lol/summoner:application:windows"
       ]
   """
   @spec build_policy_window_keys(routing_val(), endpoint()) :: list(key)
   def build_policy_window_keys(routing_val, endpoint) do
     Enum.map(
-      RateLimiter.counter_limit_types(),
+      RateLimiter.policy_limit_types(),
       &build(
         :policy_windows,
+        LimitEntry.create!(%{routing_val: routing_val, endpoint: endpoint, limit_type: &1})
+      )
+    )
+  end
+
+  @doc """
+  Builds a list of Redis cooldown keys for all known `limit_types`.
+
+  This is used to check for active cooldowns on a given `{routing_val, endpoint}`.
+
+  ## Example
+
+      iex> LolApi.RateLimiter.KeyBuilder.build_cooldown_keys("na1", "/lol/summoner")
+      [
+        "lol_api:v1:cooldown:na1:/lol/summoner:method",
+        "lol_api:v1:cooldown:na1:service",
+        "lol_api:v1:cooldown:na1:application"
+      ]
+
+  """
+  @spec build_cooldown_keys(routing_val(), endpoint()) :: [String.t()]
+  def build_cooldown_keys(routing_val, endpoint) do
+    Enum.map(
+      RateLimiter.limit_types(),
+      &build(
+        :cooldown,
         LimitEntry.create!(%{routing_val: routing_val, endpoint: endpoint, limit_type: &1})
       )
     )

@@ -5,13 +5,23 @@ defmodule LolApi.RateLimiter.Cooldown do
   require Logger
 
   alias LolApi.Config
-  alias LolApi.RateLimiter
-  alias LolApi.RateLimiter.{HeaderParser, KeyBuilder, RedisCommand, TTL}
+
+  alias LolApi.RateLimiter.{
+    HeaderParser,
+    KeyBuilder,
+    KeyValueParser,
+    LimitEntry,
+    RedisCommand,
+    TTL
+  }
+
   alias SharedUtils.Redis
 
-  @type routing_val :: RateLimiter.routing_val()
-  @type endpoint :: RateLimiter.endpoint()
-  @type headers :: HeaderParser.headers()
+  @type routing_val :: String.t()
+  @type endpoint :: String.t()
+  @type headers :: [{String.t(), String.t()}]
+  @type allowed :: {:allowed, LimitEntry.t()}
+  @type throttled :: {:throttled, LimitEntry.t()}
 
   @doc """
   Builds a cooldown Redis key from the given `routing_val`, `endpoint`, and Riot response headers.
@@ -27,8 +37,8 @@ defmodule LolApi.RateLimiter.Cooldown do
       ...>   {"date", "Tue, 01 Apr 2025 18:15:26 GMT"},
       ...>   {"retry-after", "120"}
       ...> ]
-      iex> LolApi.RateLimiter.Cooldown.build_key("na1", "/lol/summoner", headers)
-      "lol_api:v1:cooldown:na1:/lol/summoner:application:120"
+      iex> LolApi.RateLimiter.Cooldown.build_key(headers, "na1", "/lol/summoner")
+      "lol_api:v1:cooldown:na1:application"
   """
   def build_key(headers, routing_val, endpoint) do
     headers
@@ -77,19 +87,6 @@ defmodule LolApi.RateLimiter.Cooldown do
   end
 
   @doc """
-  Checks whether a cooldown key exists in Redis for a given `{routing_val, endpoint, limit_type}` triple.
-
-  Used to immediately reject requests if a cooldown is active.
-
-  ## Example
-
-      iex> Cooldown.exists?("na1", "/lol/summoner", :application)
-      true
-  """
-
-  # @spec exists?(routing_val(), endpoint(), limit_type()) :: boolean()
-
-  @doc """
   Sets a cooldown key in Redis if headers indicate cooldown is required.
 
   This function builds a cooldown key from the headers and writes it into Redis
@@ -112,8 +109,44 @@ defmodule LolApi.RateLimiter.Cooldown do
       end)
     else
       false ->
-        Logger.debug("Cooldown skipped: headers do not contain retry-after or rate-limit-type")
+        Logger.debug(
+          "Cooldown skipped: headers do not contain retry-after or rate-limit-type #{inspect(headers)}"
+        )
+
         :ok
     end
+  end
+
+  @doc """
+  Checks if any cooldown is currently active for a given `routing_val` and `endpoint`.
+
+  This function builds all cooldown key variants for known limit types (`:application`, `:method`, and `:service`), 
+  then asks Redis which key has the longest active TTL. If any key is found with a positive TTL, 
+  the request is rejected with `{:throttled, limit_entry}`. Otherwise, the request is considered allowed.
+
+  The returned `LimitEntry` helps trace which key caused throttling and how much time remains.
+
+  This check ensures we honor cooldown periods imposed by Riot’s `Retry-After` header.
+
+      iex> Cooldown.check("na1", "/lol/summoner")
+      {:allowed, %LimitEntry{...}}
+
+      iex> Cooldown.check("na1", "/lol/spectator/v3/featured-games")
+      {:throttled, %LimitEntry{ttl: 17, source: :cooldown, ...}}
+
+  """
+  @spec check(routing_val(), endpoint()) :: allowed | throttled | {:error, ErrorMessage.t()}
+  def check(routing_val, endpoint) do
+    KeyBuilder.build_cooldown_keys(routing_val, endpoint)
+    |> RedisCommand.get_cooldown_key_with_largest_ttl()
+    |> Redis.with_pool(Config.redis_pool_name(), fn
+      [] ->
+        {:allowed,
+         LimitEntry.create!(%{routing_val: routing_val, endpoint: endpoint, source: :cooldown})}
+
+      [cooldown_key, ttl] ->
+        limit_entry = KeyValueParser.parse_cooldown(cooldown_key, ttl)
+        {:throttled, limit_entry}
+    end)
   end
 end

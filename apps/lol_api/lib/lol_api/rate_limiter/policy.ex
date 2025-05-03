@@ -1,4 +1,4 @@
-defmodule LolApi.RateLimiter.Counter do
+defmodule LolApi.RateLimiter.Policy do
   @moduledoc """
   Handles rate-limiting logic using atomic Redis counters.
 
@@ -38,7 +38,7 @@ defmodule LolApi.RateLimiter.Counter do
   @type limit_entries :: [limit_entry()]
   @type allowed :: {:ok, :allowed}
   @type throttled :: {:error, :throttled, pos_integer()}
-  @type resp_headers :: [{String.t(), String.t()}]
+  @type headers :: HeaderParser.headers()
 
   # add telemetry later
   # Counter: how many times each key is incremented
@@ -56,8 +56,8 @@ defmodule LolApi.RateLimiter.Counter do
   We only check `:policy_windows` keys — they act as presence markers
   for a fully defined policy (which always includes associated limits).
   """
-  @spec policy_known?(routing_val(), endpoint()) :: {:ok, boolean()} | {:error, ErrorMessage.t()}
-  def policy_known?(routing_val, endpoint) do
+  @spec known?(routing_val(), endpoint()) :: {:ok, boolean()} | {:error, ErrorMessage.t()}
+  def known?(routing_val, endpoint) do
     routing_val
     |> KeyBuilder.build_policy_window_keys(endpoint)
     |> RedisCommand.check_keys_existance()
@@ -96,8 +96,8 @@ defmodule LolApi.RateLimiter.Counter do
     |> KeyValueParser.parse_policy_windows()
   end
 
-  @spec get_policy(routing_val(), endpoint()) :: limit_entries()
-  def get_policy(routing_val, endpoint) do
+  @spec get(routing_val(), endpoint()) :: limit_entries()
+  def get(routing_val, endpoint) do
     load_policy_windows(routing_val, endpoint)
     |> Enum.map(&KeyBuilder.build(:policy_limit, &1))
     |> RedisCommand.get_keys_with_values()
@@ -105,65 +105,24 @@ defmodule LolApi.RateLimiter.Counter do
     |> KeyValueParser.parse_policy_limits()
   end
 
-  @spec track_request(routing_val, endpoint, resp_headers) ::
-          allowed | throttled | {:error, ErrorMessage.t()}
-  def track_request(routing_val, endpoint, resp_headers) do
-    case policy_known?(routing_val, endpoint) do
-      {:ok, true} ->
-        get_policy(routing_val, endpoint)
-        |> RedisCommand.check_and_increment()
-        |> Redis.with_pool(@pool_name, fn
-          ["allowed"] -> {:ok, :allowed}
-          ["throttled", ttl] -> {:error, :throttled, ttl}
-        end)
-
-      {:ok, false} ->
-        :ok =
-          resp_headers
-          |> HeaderParser.parse()
-          |> set_policy()
-
-        Cooldown.maybe_set(resp_headers, routing_val, endpoint)
-
-        {:ok, :allowed}
-
-      {:error, _} = err ->
-        err
-    end
+  def enforce(limit_entries) do
+    limit_entries
+    |> RedisCommand.check_and_increment()
+    |> Redis.with_pool(@pool_name, fn
+      ["allowed"] -> {:ok, :allowed}
+      ["throttled", ttl] -> {:error, :throttled, ttl}
+    end)
   end
 
   @doc """
-  Writes rate-limiting policy into Redis using a Redis `MSET` command.
+  Parses Riot rate-limit headers and writes the resulting policy to Redis via `MSET`.
 
-  It receives a list of `%LimitEntry{}` structs that define the limits
-  per `{routing_val, endpoint, limit_type, window_sec}`.
+  This function extracts `%LimitEntry{}` structs from the headers using `HeaderParser.parse/1`,
+  and then writes both the `:policy_windows` and `:policy_limit` keys.
 
-  Example structure:
+  Together, these define the canonical policy for the operational phase.
 
-      [
-        %LimitEntry{
-          routing_val: "na1",
-          endpoint: "/lol/summoner",
-          limit_type: :application,
-          window_sec: 1,
-          count_limit: 20,
-          count: 0,
-          request_time: nil,
-          retry_after: nil
-        },
-        %LimitEntry{
-          routing_val: "na1",
-          endpoint: "/lol/summoner",
-          limit_type: :application,
-          window_sec: 120,
-          count_limit: 100,
-          count: 0,
-          request_time: nil,
-          retry_after: nil
-        }
-      ]
-
-  This writes two types of Redis keys:
+  It writes two types of Redis keys:
 
     • `:policy_windows` — defines which window durations apply per `{routing_val, endpoint, limit_type}`.
 
@@ -178,9 +137,10 @@ defmodule LolApi.RateLimiter.Counter do
 
   Together, these define the canonical policy for the operational phase.
   """
-  @spec set_policy(limit_entries()) :: :ok | {:error, ErrorMessage.t()}
-  def set_policy(limit_entries) do
-    limit_entries
+  @spec set(headers()) :: :ok | {:error, ErrorMessage.t()}
+  def set(headers) do
+    headers
+    |> HeaderParser.parse()
     |> RedisCommand.build_policy_mset_command()
     |> Redis.with_pool(@pool_name, fn "OK" -> :ok end)
   end

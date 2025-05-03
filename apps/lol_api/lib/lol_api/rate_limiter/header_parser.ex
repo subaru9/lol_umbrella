@@ -42,7 +42,8 @@ defmodule LolApi.RateLimiter.HeaderParser do
         request_time: ~U[2025-04-01 18:15:26Z],
         window_sec: nil,
         count_limit: nil,
-        count: 0
+        count: 0,
+        source: :headers
       }
   """
   @spec extract_cooldown(headers(), routing_val(), endpoint()) :: LimitEntry.t()
@@ -54,7 +55,8 @@ defmodule LolApi.RateLimiter.HeaderParser do
       request_time: headers[@date],
       retry_after: headers[@retry_after],
       endpoint: endpoint,
-      routing_val: routing_val
+      routing_val: routing_val,
+      source: :headers
     }
 
     LimitEntry.create!(arg)
@@ -141,7 +143,8 @@ defmodule LolApi.RateLimiter.HeaderParser do
         limit_type: type,
         request_time: request_time,
         window_sec: window_sec,
-        retry_after: retry_after
+        retry_after: retry_after,
+        source: :headers
       }
       |> LimitEntry.create!()
     end
@@ -164,7 +167,8 @@ defmodule LolApi.RateLimiter.HeaderParser do
         limit_type: type,
         request_time: request_time,
         window_sec: window_sec,
-        retry_after: retry_after
+        retry_after: retry_after,
+        source: :headers
       }
       |> LimitEntry.create!()
     end

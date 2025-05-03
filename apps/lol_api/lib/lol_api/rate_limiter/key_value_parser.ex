@@ -26,7 +26,10 @@ defmodule LolApi.RateLimiter.KeyValueParser do
           count: 0,
           count_limit: nil,
           request_time: nil,
-          retry_after: nil
+          retry_after: nil,
+          ttl: nil,
+          adjusted_ttl: nil,
+          source: :policy
         },
         %LolApi.RateLimiter.LimitEntry{
           endpoint: "/lol/summoner",
@@ -36,7 +39,10 @@ defmodule LolApi.RateLimiter.KeyValueParser do
           count: 0,
           count_limit: nil,
           request_time: nil,
-          retry_after: nil
+          retry_after: nil,
+          ttl: nil,
+          adjusted_ttl: nil,
+          source: :policy
         },
         %LolApi.RateLimiter.LimitEntry{
           endpoint: "/lol/summoner",
@@ -46,7 +52,10 @@ defmodule LolApi.RateLimiter.KeyValueParser do
           count: 0,
           count_limit: nil,
           request_time: nil,
-          retry_after: nil
+          retry_after: nil,
+          ttl: nil,
+          adjusted_ttl: nil,
+          source: :policy
         }
       ]
   """
@@ -54,15 +63,11 @@ defmodule LolApi.RateLimiter.KeyValueParser do
     flat_list
     |> Enum.chunk_every(2)
     |> Enum.flat_map(fn [key, val] ->
-      parsed_key = KeyParser.parse(key)
+      limit_entry = KeyParser.parse(key)
 
       val
       |> String.split(",")
-      |> Enum.map(fn window_sec ->
-        parsed_key
-        |> Map.put(:window_sec, window_sec)
-        |> LimitEntry.create!()
-      end)
+      |> Enum.map(&LimitEntry.update!(limit_entry, %{window_sec: &1}))
     end)
   end
 
@@ -79,34 +84,43 @@ defmodule LolApi.RateLimiter.KeyValueParser do
       iex> LolApi.RateLimiter.KeyValueParser.parse_policy_limits(flat_list)
       [
         %LolApi.RateLimiter.LimitEntry{
-          routing_val: "na1",
+          routing_val: :na1,
           endpoint: "/lol/summoner",
           limit_type: :application,
           window_sec: 1,
           count_limit: 20,
           count: 0,
           request_time: nil,
-          retry_after: nil
+          retry_after: nil,
+          ttl: nil,
+          adjusted_ttl: nil,
+          source: :policy
         },
         %LolApi.RateLimiter.LimitEntry{
-          routing_val: "na1",
+          routing_val: :na1,
           endpoint: "/lol/summoner",
           limit_type: :application,
           window_sec: 120,
           count_limit: 100,
           count: 0,
           request_time: nil,
-          retry_after: nil
+          retry_after: nil,
+          ttl: nil,
+          adjusted_ttl: nil,
+          source: :policy
         },
         %LolApi.RateLimiter.LimitEntry{
-          routing_val: "na1",
+          routing_val: :na1,
           endpoint: "/lol/summoner",
           limit_type: :method,
           window_sec: 10,
           count_limit: 50,
           count: 0,
           request_time: nil,
-          retry_after: nil
+          retry_after: nil,
+          ttl: nil,
+          adjusted_ttl: nil,
+          source: :policy
         }
       ]
   """
@@ -116,8 +130,31 @@ defmodule LolApi.RateLimiter.KeyValueParser do
     |> Enum.map(fn [limit_key, count_limit] ->
       limit_key
       |> KeyParser.parse()
-      |> Map.put(:count_limit, count_limit)
-      |> LimitEntry.create!()
+      |> LimitEntry.update!(%{count_limit: count_limit})
     end)
+  end
+
+  @doc """
+  Parses a cooldown key and TTL pair into a `%LimitEntry{}`.
+
+  Adds `ttl` and marks `source: :cooldown`.
+
+  ## Example
+
+      iex> key = "lol_api:v1:cooldown:na1:/lol/summoner:method"
+      iex> LolApi.RateLimiter.KeyValueParser.parse_cooldown(key, 42)
+      %LolApi.RateLimiter.LimitEntry{
+        routing_val: :na1,
+        endpoint: "/lol/summoner",
+        limit_type: :method,
+        ttl: 42,
+        source: :cooldown
+      }
+  """
+  @spec parse_cooldown(key :: String.t(), ttl :: non_neg_integer()) :: LimitEntry.t()
+  def parse_cooldown(key, ttl) do
+    key
+    |> KeyParser.parse()
+    |> LimitEntry.update!(%{ttl: ttl})
   end
 end

@@ -15,7 +15,7 @@ defmodule LolApi.RateLimiter.LimitEntry do
     - `RedisCommand`: serializes entries to Redis
     - `KeyBuilder`: generates keys from entries
     - `KeyValueParser`: parses Redis keys into entries
-    - `Counter`: enforces limits using entries
+    - `Policy`: enforces limits using entries
 
   It is the shared language of the rate-limiting system.
   """
@@ -36,7 +36,10 @@ defmodule LolApi.RateLimiter.LimitEntry do
           count_limit: pos_integer() | nil,
           count: non_neg_integer(),
           request_time: DateTime.t() | nil,
-          retry_after: pos_integer() | nil
+          retry_after: pos_integer() | nil,
+          ttl: non_neg_integer() | nil,
+          adjusted_ttl: non_neg_integer() | nil,
+          source: :headers | :cooldown | :policy | :live
         }
 
   @type attrs :: %{
@@ -47,7 +50,10 @@ defmodule LolApi.RateLimiter.LimitEntry do
           optional(:count_limit) => pos_integer() | String.t(),
           optional(:count) => non_neg_integer() | String.t(),
           optional(:request_time) => String.t(),
-          optional(:retry_after) => pos_integer() | String.t()
+          optional(:retry_after) => pos_integer() | String.t(),
+          optional(:ttl) => non_neg_integer() | String.t(),
+          optional(:adjusted_ttl) => non_neg_integer() | String.t(),
+          optional(:source) => :headers | :cooldown | :policy | :live | String.t()
         }
 
   @available_fields ~w(
@@ -59,6 +65,9 @@ defmodule LolApi.RateLimiter.LimitEntry do
     retry_after
     routing_val
     endpoint
+    ttl
+    adjusted_ttl
+    source
   )a
 
   @primary_key false
@@ -73,6 +82,10 @@ defmodule LolApi.RateLimiter.LimitEntry do
 
     field :request_time, LolApi.Types.RFC1123DateTime
     field :retry_after, :integer
+
+    field :ttl, :integer
+    field :adjusted_ttl, :integer
+    field :source, Ecto.Enum, values: [:headers, :cooldown, :policy, :live]
   end
 
   def changeset(%__MODULE__{} = limit_entry, attrs \\ %{}) do
@@ -80,6 +93,8 @@ defmodule LolApi.RateLimiter.LimitEntry do
     |> cast(attrs, @available_fields)
     |> validate_number(:window_sec, greater_than: 0)
     |> validate_number(:count_limit, greater_than: 0)
+    |> validate_number(:ttl, greater_than_or_equal_to: 0)
+    |> validate_number(:adjusted_ttl, greater_than_or_equal_to: 0)
     |> validate_number(:count, greater_than_or_equal_to: 0)
   end
 

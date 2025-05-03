@@ -14,18 +14,42 @@ defmodule LolApi.RateLimiter do
   All three types may be used for **cooldowns**, depending on what `X-Rate-Limit-Type` is returned in a 429 response.
   """
 
+  alias LolApi.RateLimiter.{Cooldown, HeaderParser, Policy}
+
   @limit_types [:method, :service, :application]
-  @counter_limit_types [:method, :application]
+  @policy_limit_types [:method, :application]
 
   @type limit_type :: :method | :service | :application
-  @type counter_limit_type :: :method | :application
+  @type policy_limit_type :: :method | :application
 
   @type routing_val :: String.t()
   @type endpoint :: String.t()
+  @type headers :: HeaderParser.headers()
+  @type allowed :: {:ok, :allowed}
+  @type throttled :: {:error, :throttled, pos_integer()}
 
   @spec limit_types :: [limit_type()]
   def limit_types, do: @limit_types
 
-  @spec counter_limit_types :: [counter_limit_type()]
-  def counter_limit_types, do: @counter_limit_types
+  @spec policy_limit_types :: [policy_limit_type()]
+  def policy_limit_types, do: @policy_limit_types
+
+  @spec hit(routing_val, endpoint, headers) ::
+          allowed | throttled | {:error, ErrorMessage.t()}
+  def hit(routing_val, endpoint, headers) do
+    case Policy.known?(routing_val, endpoint) do
+      {:ok, true} ->
+        limit_entries = Policy.get(routing_val, endpoint)
+        Policy.enforce(limit_entries)
+
+      {:ok, false} ->
+        :ok = Policy.set(headers)
+        Cooldown.maybe_set(headers, routing_val, endpoint)
+
+        {:ok, :allowed}
+
+      {:error, _} = err ->
+        err
+    end
+  end
 end

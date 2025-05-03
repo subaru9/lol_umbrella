@@ -6,7 +6,8 @@ defmodule LolApi.RateLimiter.RedisCommand do
 
   @type key :: String.t()
   @type keys :: list(key)
-  @type window_keys :: list(String.t())
+  @type window_keys :: list(key)
+  @type cooldown_keys :: list(key)
   @type ttl :: non_neg_integer()
   @type ttls :: list(ttl)
   @type command :: [String.t()]
@@ -17,7 +18,7 @@ defmodule LolApi.RateLimiter.RedisCommand do
 
   ## Examples
 
-      iex> RedisCommand.build_cooldown_setex_command("lol_api:v1:cooldown:na1:application", 120)
+      iex> LolApi.RateLimiter.RedisCommand.build_cooldown_setex_command("lol_api:v1:cooldown:na1:application", 120)
       ["SETEX", "lol_api:v1:cooldown:na1:application", "120", "120"]
   """
   @spec build_cooldown_setex_command(key, ttl) :: command()
@@ -141,6 +142,49 @@ defmodule LolApi.RateLimiter.RedisCommand do
   end
 
   @doc """
+  Fetches the cooldown key with the longest positive TTL from Redis.
+
+  Takes a list of Redis keys (cooldown keys) and checks their TTLs.
+  Returns the key with the highest TTL — only if it is greater than zero.
+
+  This is useful for identifying which cooldown is currently active
+  when multiple limit types (`:application`, `:method`, `:service`) are checked.
+
+  ## Example result:
+
+      ["lol_api:v1:cooldown:na1:/lol/summoner:method", 42]
+
+  If no key has a positive TTL, returns an empty list.
+  """
+  @spec get_cooldown_key_with_largest_ttl(cooldown_keys()) :: command()
+  def get_cooldown_key_with_largest_ttl(keys) do
+    script = """
+    results={}
+    max_ttl = 0
+    winner_key = nil
+    for i, key in ipairs(KEYS) do
+      current_ttl = redis.call("TTL", key)
+      if current_ttl > 0 and current_ttl > max_ttl then
+        max_ttl = current_ttl
+        winner_key = key
+      end
+    end
+    if winner_key then
+      table.insert(results, winner_key)
+      table.insert(results, max_ttl)
+    end
+    return results
+    """
+
+    [
+      "EVAL",
+      script,
+      to_string(length(keys)),
+      keys
+    ]
+  end
+
+  @doc """
   Atomically builds the Redis EVAL command from a list of `%LimitEntry{}` structs.
 
   ## Example
@@ -168,7 +212,7 @@ defmodule LolApi.RateLimiter.RedisCommand do
       ...>     count_limit: 50
       ...>   }
       ...> ]
-      iex> result = LolApi.RateLimiter.RedisCommand.check_and_increment_from_entries(entries)
+      iex> result = LolApi.RateLimiter.RedisCommand.check_and_increment(entries)
       iex> [
       ...>   "EVAL",
       ...>   _script,
