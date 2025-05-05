@@ -20,8 +20,8 @@ defmodule LolApi.RateLimiter.Cooldown do
   @type routing_val :: String.t()
   @type endpoint :: String.t()
   @type headers :: [{String.t(), String.t()}]
-  @type allowed :: {:allowed, LimitEntry.t()}
-  @type throttled :: {:throttled, LimitEntry.t()}
+  @type allow :: {:allow, LimitEntry.t()}
+  @type throttle :: {:throttle, LimitEntry.t()}
 
   @doc """
   Builds a cooldown Redis key from the given `routing_val`, `endpoint`, and Riot response headers.
@@ -122,31 +122,31 @@ defmodule LolApi.RateLimiter.Cooldown do
 
   This function builds all cooldown key variants for known limit types (`:application`, `:method`, and `:service`), 
   then asks Redis which key has the longest active TTL. If any key is found with a positive TTL, 
-  the request is rejected with `{:throttled, limit_entry}`. Otherwise, the request is considered allowed.
+  the request is rejected with `{:throttle, limit_entry}`. Otherwise, the request is considered allow.
 
   The returned `LimitEntry` helps trace which key caused throttling and how much time remains.
 
   This check ensures we honor cooldown periods imposed by Riot’s `Retry-After` header.
 
-      iex> Cooldown.check("na1", "/lol/summoner")
-      {:allowed, %LimitEntry{...}}
+      iex> Cooldown.status("na1", "/lol/summoner")
+      {:allow, %LimitEntry{...}}
 
-      iex> Cooldown.check("na1", "/lol/spectator/v3/featured-games")
-      {:throttled, %LimitEntry{ttl: 17, source: :cooldown, ...}}
+      iex> Cooldown.status("na1", "/lol/spectator/v3/featured-games")
+      {:throttle, %LimitEntry{ttl: 17, source: :cooldown, ...}}
 
   """
-  @spec check(routing_val(), endpoint()) :: allowed | throttled | {:error, ErrorMessage.t()}
-  def check(routing_val, endpoint) do
+  @spec status(routing_val(), endpoint()) :: allow | throttle | {:error, ErrorMessage.t()}
+  def status(routing_val, endpoint) do
     KeyBuilder.build_cooldown_keys(routing_val, endpoint)
     |> RedisCommand.get_cooldown_key_with_largest_ttl()
     |> Redis.with_pool(Config.redis_pool_name(), fn
       [] ->
-        {:allowed,
+        {:allow,
          LimitEntry.create!(%{routing_val: routing_val, endpoint: endpoint, source: :cooldown})}
 
       [cooldown_key, ttl] ->
         limit_entry = KeyValueParser.parse_cooldown(cooldown_key, ttl)
-        {:throttled, limit_entry}
+        {:throttle, limit_entry}
     end)
   end
 end
