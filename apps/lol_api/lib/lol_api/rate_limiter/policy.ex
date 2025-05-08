@@ -14,10 +14,10 @@ defmodule LolApi.RateLimiter.Policy do
   The result is a two-phase rate limiter that respects Riot’s dynamic limits
   while minimizing Redis roundtrips.
   """
+  alias LolApi.Config
   alias LolApi.RateLimiter
 
   alias LolApi.RateLimiter.{
-    Cooldown,
     HeaderParser,
     KeyBuilder,
     KeyValueParser,
@@ -27,18 +27,20 @@ defmodule LolApi.RateLimiter.Policy do
 
   alias SharedUtils.Redis
 
-  @pool_name :lol_api_rate_limiter_pool
-
   @type redis_key :: String.t()
   @type ttl_seconds :: non_neg_integer()
+
   @type routing_val :: String.t()
   @type endpoint :: String.t()
   @type limit_type :: RateLimiter.limit_type()
+
   @type limit_entry :: LimitEntry.t()
   @type limit_entries :: [limit_entry()]
-  @type allowed :: {:ok, :allowed}
-  @type throttled :: {:error, :throttled, pos_integer()}
-  @type headers :: HeaderParser.headers()
+
+  @type allow :: {:allow, limit_entry()}
+  @type throttle :: {:throttle, limit_entry()}
+
+  @type headers :: [{String.t(), String.t()}]
 
   # add telemetry later
   # Counter: how many times each key is incremented
@@ -47,7 +49,7 @@ defmodule LolApi.RateLimiter.Policy do
   def increment(key, ttl) do
     key
     |> RedisCommand.inc_with_exp(ttl)
-    |> Redis.with_pool(@pool_name, & &1)
+    |> Redis.with_pool(Config.redis_pool_name(), & &1)
   end
 
   @doc """
@@ -61,7 +63,7 @@ defmodule LolApi.RateLimiter.Policy do
     routing_val
     |> KeyBuilder.build_policy_window_keys(endpoint)
     |> RedisCommand.check_keys_existance()
-    |> Redis.with_pool(@pool_name, &{:ok, &1 === 2})
+    |> Redis.with_pool(Config.redis_pool_name(), &{:ok, &1 === 2})
   end
 
   @doc """
@@ -86,31 +88,50 @@ defmodule LolApi.RateLimiter.Policy do
         retry_after: nil
       }
   """
-  @spec load_policy_windows(routing_val(), endpoint()) ::
-          limit_entries | {:error, ErrorMessage.t()}
+  @spec load_policy_windows(routing_val(), endpoint()) :: ErrorMessage.t_res(limit_entries())
   def load_policy_windows(routing_val, endpoint) do
-    routing_val
-    |> KeyBuilder.build_policy_window_keys(endpoint)
-    |> RedisCommand.get_keys_with_values()
-    |> Redis.with_pool(@pool_name, & &1)
-    |> KeyValueParser.parse_policy_windows()
+    with keys <- KeyBuilder.build_policy_window_keys(routing_val, endpoint),
+         command <- RedisCommand.get_keys_with_values(keys) do
+      Redis.with_pool(command, Config.redis_pool_name(), fn
+        [] ->
+          {:error,
+           ErrorMessage.not_found(
+             "[LolApi.RateLimiter.Policy] Policy windows not found",
+             command
+           )}
+
+        entries ->
+          {:ok, KeyValueParser.parse_policy_windows(entries)}
+      end)
+    end
   end
 
-  @spec get(routing_val(), endpoint()) :: limit_entries()
-  def get(routing_val, endpoint) do
-    load_policy_windows(routing_val, endpoint)
-    |> Enum.map(&KeyBuilder.build(:policy_limit, &1))
-    |> RedisCommand.get_keys_with_values()
-    |> Redis.with_pool(@pool_name, & &1)
-    |> KeyValueParser.parse_policy_limits()
+  @spec fetch(routing_val(), endpoint()) :: ErrorMessage.t_res(limit_entries())
+  def fetch(routing_val, endpoint) do
+    with {:ok, limit_entries} <- load_policy_windows(routing_val, endpoint),
+         limit_keys <- Enum.map(limit_entries, &KeyBuilder.build(:policy_limit, &1)),
+         command <- RedisCommand.get_keys_with_values(limit_keys) do
+      Redis.with_pool(command, Config.redis_pool_name(), fn
+        [] ->
+          {:error,
+           ErrorMessage.not_found("[LolApi.RateLimiter.Policy] Policy limits not found", command)}
+
+        flat_list ->
+          {:ok, KeyValueParser.parse_policy_limits(flat_list)}
+      end)
+    end
   end
 
+  @spec enforce(limit_entries()) :: allow() | throttle() | {:error, ErrorMessage.t()}
   def enforce(limit_entries) do
     limit_entries
     |> RedisCommand.check_and_increment()
-    |> Redis.with_pool(@pool_name, fn
-      ["allowed"] -> {:ok, :allowed}
-      ["throttled", ttl] -> {:error, :throttled, ttl}
+    |> Redis.with_pool(Config.redis_pool_name(), fn
+      ["allow" | flat_list] ->
+        {:allow, KeyValueParser.parse_live_counters_with_values(flat_list)}
+
+      ["throttle" | flat_list] ->
+        {:throttle, KeyValueParser.parse_live_counters_with_values(flat_list)}
     end)
   end
 
@@ -142,6 +163,6 @@ defmodule LolApi.RateLimiter.Policy do
     headers
     |> HeaderParser.parse()
     |> RedisCommand.build_policy_mset_command()
-    |> Redis.with_pool(@pool_name, fn "OK" -> :ok end)
+    |> Redis.with_pool(Config.redis_pool_name(), fn "OK" -> :ok end)
   end
 end

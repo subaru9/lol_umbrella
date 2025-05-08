@@ -5,6 +5,10 @@ defmodule LolApi.RateLimiter.KeyValueParser do
 
   alias LolApi.RateLimiter.{KeyParser, LimitEntry}
 
+  @type limit_entry :: LimitEntry.t()
+  @type limit_entries :: [limit_entry()]
+  @type key_value_flat_list :: [String.t()]
+
   @doc """
   Parses a flat list returned by Redis
   into a list of `%LimitEntry{}` maps — one for each window value
@@ -59,6 +63,7 @@ defmodule LolApi.RateLimiter.KeyValueParser do
         }
       ]
   """
+  @spec parse_policy_windows(key_value_flat_list) :: limit_entries()
   def parse_policy_windows(flat_list) do
     flat_list
     |> Enum.chunk_every(2)
@@ -124,6 +129,7 @@ defmodule LolApi.RateLimiter.KeyValueParser do
         }
       ]
   """
+  @spec parse_policy_limits(key_value_flat_list()) :: limit_entries()
   def parse_policy_limits(flat_list) do
     flat_list
     |> Enum.chunk_every(2)
@@ -131,6 +137,51 @@ defmodule LolApi.RateLimiter.KeyValueParser do
       limit_key
       |> KeyParser.parse()
       |> LimitEntry.update!(%{count_limit: count_limit})
+    end)
+  end
+
+  @doc """
+  Parses a flat list of live Redis counter data into a list of `%LimitEntry{}` structs.
+
+  The flat list is structured as repeating triplets:
+    1. the Redis key (e.g., `"lol_api:v1:live:euw1:/lol/summoner:method:window:1"`)
+    2. the current count
+    3. the remaining TTL in seconds
+
+  ## Example
+
+      iex> flat = [
+      ...>   "lol_api:v1:live:euw1:/lol/summoner:method:window:1", "1", "59",
+      ...>   "lol_api:v1:live:euw1:/lol/summoner:method:window:120", "3", "118"
+      ...> ]
+      iex> LolApi.RateLimiter.KeyValueParser.parse_live_counters_with_values(flat)
+      [
+        %LolApi.RateLimiter.LimitEntry{
+          routing_val: "euw1",
+          endpoint: "/lol/summoner",
+          limit_type: :method,
+          window_sec: 1,
+          count: 1,
+          ttl: 59
+        },
+        %LolApi.RateLimiter.LimitEntry{
+          routing_val: "euw1",
+          endpoint: "/lol/summoner",
+          limit_type: :method,
+          window_sec: 120,
+          count: 3,
+          ttl: 118
+        }
+      ]
+  """
+  @spec parse_live_counters_with_values(key_value_flat_list()) :: limit_entries()
+  def parse_live_counters_with_values(flat_list) do
+    flat_list
+    |> Enum.chunk_every(3)
+    |> Enum.map(fn [live_key, count, ttl] ->
+      live_key
+      |> KeyParser.parse()
+      |> LimitEntry.update!(%{count: count, ttl: ttl})
     end)
   end
 
@@ -151,7 +202,7 @@ defmodule LolApi.RateLimiter.KeyValueParser do
         source: :cooldown
       }
   """
-  @spec parse_cooldown(key :: String.t(), ttl :: non_neg_integer()) :: LimitEntry.t()
+  @spec parse_cooldown(key :: String.t(), ttl :: non_neg_integer()) :: limit_entry()
   def parse_cooldown(key, ttl) do
     key
     |> KeyParser.parse()
