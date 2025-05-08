@@ -91,7 +91,7 @@ defmodule LolApi.RateLimiter.KeyParser do
       routing_val: routing_val,
       endpoint: endpoint,
       limit_type: limit_type,
-      suffix: Enum.map(suffix, &String.to_atom/1)
+      suffix: suffix
     })
   end
 
@@ -127,5 +127,9 @@ defmodule LolApi.RateLimiter.KeyParser do
       endpoint: endpoint,
       limit_type: :method
     })
+  end
+
+  defp parse_parts(parts) do
+    raise "[LolApi.RateLimiter.KeyParser] Unmached key parts: #{inspect(parts)}"
   end
 end
