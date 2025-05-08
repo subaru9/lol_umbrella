@@ -94,7 +94,8 @@ defmodule LolApi.RateLimiter.Cooldown do
 
   Raises if the TTL is non-positive.
   """
-  @spec maybe_set(HeaderParser.headers(), routing_val(), endpoint()) :: :ok
+  @spec maybe_set(HeaderParser.headers(), routing_val(), endpoint()) ::
+          :ok | {:error, ErrorMessage.t()}
   def maybe_set(headers, routing_val, endpoint) do
     with true <- create?(headers),
          limit_entry <- HeaderParser.extract_cooldown(headers, routing_val, endpoint),
@@ -126,7 +127,7 @@ defmodule LolApi.RateLimiter.Cooldown do
 
   The returned `LimitEntry` helps trace which key caused throttling and how much time remains.
 
-  This check ensures we honor cooldown periods imposed by Riot’s `Retry-After` header.
+  This status ensures we honor cooldown periods imposed by Riot’s `Retry-After` header.
 
       iex> Cooldown.status("na1", "/lol/summoner")
       {:allow, %LimitEntry{...}}
@@ -141,12 +142,15 @@ defmodule LolApi.RateLimiter.Cooldown do
     |> RedisCommand.get_cooldown_key_with_largest_ttl()
     |> Redis.with_pool(Config.redis_pool_name(), fn
       [] ->
-        {:allow,
-         LimitEntry.create!(%{routing_val: routing_val, endpoint: endpoint, source: :cooldown})}
+        limit_entry =
+          LimitEntry.create!(%{routing_val: routing_val, endpoint: endpoint, source: :cooldown})
+
+        {:allow, [limit_entry]}
 
       [cooldown_key, ttl] ->
         limit_entry = KeyValueParser.parse_cooldown(cooldown_key, ttl)
-        {:throttle, limit_entry}
+
+        {:throttle, [limit_entry]}
     end)
   end
 end
