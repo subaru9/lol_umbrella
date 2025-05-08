@@ -239,26 +239,39 @@ defmodule LolApi.RateLimiter.RedisCommand do
   defp check_and_increment_from_keys(counter_keys, limit_keys, ttls) do
     script =
       """
+      local throttle_results = {"throttle"}
+
       for i = 1, #KEYS do
         local count = tonumber(redis.call("GET", KEYS[i]) or "0")
         local limit = tonumber(redis.call("GET", ARGV[i]) or "0")
 
         if count >= limit then
           local ttl = redis.call("TTL", KEYS[i])
-          return {"throttled", ttl}
+          return {"throttle", ttl}
+
+          table.insert(results, KEYS[i])
+          table.insert(results, tostring(count))
+          table.insert(results, tostring(ttl))
+
+          return throttle_results
         end
       end
 
       -- passed all checks, now increment + expire if needed
+      local allow_results = {"allow"}
+
       for i = 1, #KEYS do
         local ttl = tonumber(ARGV[i + #KEYS])
         local count = redis.call("INCR", KEYS[i])
         if count == 1 then
           redis.call("EXPIRE", KEYS[i], ttl)
         end
+        table.insert(results, KEYS[i])
+        table.insert(results, tostring(count))
+        table.insert(results, tostring(ttl))
       end
 
-      return {"allowed"}
+      return allow_results
       """
 
     List.flatten([
