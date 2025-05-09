@@ -19,9 +19,14 @@ defmodule LolApi.RateLimiter.Cooldown do
 
   @type routing_val :: String.t()
   @type endpoint :: String.t()
+
   @type headers :: [{String.t(), String.t()}]
-  @type allow :: {:allow, LimitEntry.t()}
-  @type throttle :: {:throttle, LimitEntry.t()}
+
+  @type limit_entry :: LimitEntry.t()
+  @type limit_entries :: [limit_entry()]
+
+  @type allow :: {:allow, limit_entries()}
+  @type throttle :: {:throttle, limit_entries()}
 
   @doc """
   Builds a cooldown Redis key from the given `routing_val`, `endpoint`, and Riot response headers.
@@ -105,13 +110,16 @@ defmodule LolApi.RateLimiter.Cooldown do
       |> RedisCommand.build_cooldown_setex_command(ttl)
       |> Redis.with_pool(Config.redis_pool_name(), fn
         "OK" ->
-          Logger.debug("Set cooldown key #{key} with TTL #{ttl}")
+          updated = LimitEntry.update!(limit_entry, %{adjusted_ttl: ttl})
+          Logger.debug("[LolApi.RateLimiter.Cooldown] Coldown set. Details: #{inspect(updated)}")
           :ok
       end)
     else
       false ->
+        limit_entry = HeaderParser.extract_cooldown(headers, routing_val, endpoint)
+
         Logger.debug(
-          "Cooldown skipped: headers do not contain retry-after or rate-limit-type #{inspect(headers)}"
+          "[LolApi.RateLimiter.Cooldown] Cooldown skipped. Details: #{inspect(limit_entry)}"
         )
 
         :ok

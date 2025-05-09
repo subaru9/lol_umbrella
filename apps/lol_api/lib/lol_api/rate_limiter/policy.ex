@@ -158,10 +158,11 @@ defmodule LolApi.RateLimiter.Policy do
 
   Together, these define the canonical policy for the operational phase.
   """
-  @spec set(headers()) :: :ok | {:error, ErrorMessage.t()}
-  def set(headers) do
+  @spec set(headers(), routing_val(), endpoint()) :: :ok | {:error, ErrorMessage.t()}
+  def set(headers, routing_val, endpoint) do
     headers
     |> HeaderParser.parse()
+    |> Enum.map(&LimitEntry.update!(&1, %{routing_val: routing_val, endpoint: endpoint}))
     |> RedisCommand.build_policy_mset_command()
     |> Redis.with_pool(Config.redis_pool_name(), fn "OK" -> :ok end)
   end

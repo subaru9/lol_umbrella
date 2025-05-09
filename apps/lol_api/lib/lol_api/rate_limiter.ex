@@ -14,7 +14,10 @@ defmodule LolApi.RateLimiter do
   All three types may be used for **cooldowns**, depending on what `X-Rate-Limit-Type` is returned in a 429 response.
   """
 
+  alias LolApi.RateLimiter.LimitEntry
   alias LolApi.RateLimiter.{Cooldown, HeaderParser, Policy}
+
+  require Logger
 
   @limit_types [:method, :service, :application]
   @policy_limit_types [:method, :application]
@@ -24,9 +27,14 @@ defmodule LolApi.RateLimiter do
 
   @type routing_val :: String.t()
   @type endpoint :: String.t()
-  @type headers :: HeaderParser.headers()
-  @type allowed :: {:ok, :allowed}
-  @type throttled :: {:error, :throttled, pos_integer()}
+
+  @type limit_entry :: LimitEntry.t()
+  @type limit_entries :: [limit_entry()]
+
+  @type allow :: {:allow, limit_entries()}
+  @type throttle :: {:throttle, limit_entries()}
+
+  @type headers :: [{String.t(), String.t()}]
 
   @spec limit_types :: [limit_type()]
   def limit_types, do: @limit_types
@@ -34,22 +42,48 @@ defmodule LolApi.RateLimiter do
   @spec policy_limit_types :: [policy_limit_type()]
   def policy_limit_types, do: @policy_limit_types
 
-  @spec hit(routing_val, endpoint, headers) ::
-          allowed | throttled | {:error, ErrorMessage.t()}
-  def hit(routing_val, endpoint, headers) do
-    case Policy.known?(routing_val, endpoint) do
-      {:ok, true} ->
-        limit_entries = Policy.get(routing_val, endpoint)
-        Policy.enforce(limit_entries)
-
+  @spec hit(routing_val, endpoint) :: allow | throttle | {:error, ErrorMessage.t()}
+  def hit(routing_val, endpoint) do
+    with {:allow, _limit_entries} <- Cooldown.status(routing_val, endpoint),
+         {:ok, true} <- Policy.known?(routing_val, endpoint),
+         {:ok, limit_entries} <- Policy.fetch(routing_val, endpoint),
+         {:allow, policy_entries} <- Policy.enforce(limit_entries) do
+      Logger.debug("Request allowed. Details: #{inspect(policy_entries)}")
+      {:allow, policy_entries}
+    else
       {:ok, false} ->
-        :ok = Policy.set(headers)
-        Cooldown.maybe_set(headers, routing_val, endpoint)
+        limit_entry = LimitEntry.create!(%{routing_val: routing_val, endpoint: endpoint})
+        Logger.debug("Policy unknown, making a blind request. Details: #{inspect(limit_entry)}")
 
-        {:ok, :allowed}
+        {:allow, []}
+
+      {:throttle, limit_entries} = throttle ->
+        Logger.debug("Request throttled. Details: #{inspect(limit_entries)}")
+        throttle
 
       {:error, _} = err ->
         err
+    end
+  end
+
+  @spec refresh(headers(), routing_val(), endpoint()) ::
+          {:ok, limit_entries()} | {:error, ErrorMessage.t()}
+  def refresh(headers, routing_val, endpoint) do
+    with {:ok, false} <- Policy.known?(routing_val, endpoint),
+         :ok <- Policy.set(headers, routing_val, endpoint),
+         :ok <- Cooldown.maybe_set(headers, routing_val, endpoint) do
+      limit_entries =
+        headers
+        |> HeaderParser.parse()
+        |> Enum.map(
+          &LimitEntry.update!(&1, %{
+            routing_val: routing_val,
+            endpoint: endpoint,
+            source: :headers
+          })
+        )
+
+      {:ok, limit_entries}
     end
   end
 end
