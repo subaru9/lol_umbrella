@@ -137,12 +137,13 @@ defmodule LolApi.RateLimiter.Cooldown do
 
   This status ensures we honor cooldown periods imposed by Riot’s `Retry-After` header.
 
-      iex> Cooldown.status("na1", "/lol/summoner")
+  ```elixir
+      Cooldown.status("na1", "/lol/summoner")
       {:allow, %LimitEntry{...}}
 
-      iex> Cooldown.status("na1", "/lol/spectator/v3/featured-games")
+      Cooldown.status("na1", "/lol/spectator/v3/featured-games")
       {:throttle, %LimitEntry{ttl: 17, source: :cooldown, ...}}
-
+  ```
   """
   @spec status(routing_val(), endpoint()) :: allow | throttle | {:error, ErrorMessage.t()}
   def status(routing_val, endpoint) do

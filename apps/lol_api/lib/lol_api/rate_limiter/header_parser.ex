@@ -16,8 +16,12 @@ defmodule LolApi.RateLimiter.HeaderParser do
   @retry_after "retry-after"
 
   @type headers :: [{String.t(), String.t()}]
+
   @type routing_val :: RateLimiter.routing_val()
   @type endpoint :: RateLimiter.endpoint()
+
+  @type limit_entry :: LimitEntry.t()
+  @type limit_entries :: [limit_entry()]
 
   def retry_after_name, do: @retry_after
   def limit_type_name, do: @limit_type
@@ -46,7 +50,7 @@ defmodule LolApi.RateLimiter.HeaderParser do
         source: :headers
       }
   """
-  @spec extract_cooldown(headers(), routing_val(), endpoint()) :: LimitEntry.t()
+  @spec extract_cooldown(headers(), routing_val(), endpoint()) :: limit_entry()
   def extract_cooldown(resp_headers, routing_val, endpoint) do
     headers = Enum.into(resp_headers, %{})
 
@@ -84,6 +88,7 @@ defmodule LolApi.RateLimiter.HeaderParser do
           count: 2,
           request_time: ~U[2025-04-01 18:15:26Z],
           endpoint: nil,
+          source: :headers,
           retry_after: nil,
           routing_val: nil
         },
@@ -94,6 +99,7 @@ defmodule LolApi.RateLimiter.HeaderParser do
           count: 20,
           request_time: ~U[2025-04-01 18:15:26Z],
           endpoint: nil,
+          source: :headers,
           retry_after: nil,
           routing_val: nil
         },
@@ -104,12 +110,13 @@ defmodule LolApi.RateLimiter.HeaderParser do
           count: 20,
           request_time: ~U[2025-04-01 18:15:26Z],
           endpoint: nil,
+          source: :headers,
           retry_after: nil,
           routing_val: nil
         }
       ]
   """
-  @spec parse(headers) :: [LimitEntry.t()]
+  @spec parse(headers) :: limit_entries()
   def parse(headers) do
     map = Enum.into(headers, %{})
     request_time = map[@date]
@@ -117,6 +124,19 @@ defmodule LolApi.RateLimiter.HeaderParser do
 
     parse_limits(map[@app_limit], map[@app_count], :application, request_time, retry_after) ++
       parse_limits(map[@method_limit], map[@method_count], :method, request_time, retry_after)
+  end
+
+  @spec parse(headers(), routing_val(), endpoint()) :: limit_entries()
+  def parse(headers, routing_val, endpoint) do
+    headers
+    |> parse()
+    |> Enum.map(
+      &LimitEntry.update!(&1, %{
+        routing_val: routing_val,
+        endpoint: endpoint,
+        source: :headers
+      })
+    )
   end
 
   # limit header is missing but count header is present

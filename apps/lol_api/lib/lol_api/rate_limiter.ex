@@ -71,18 +71,8 @@ defmodule LolApi.RateLimiter do
   def refresh(headers, routing_val, endpoint) do
     with {:ok, false} <- Policy.known?(routing_val, endpoint),
          :ok <- Policy.set(headers, routing_val, endpoint),
-         :ok <- Cooldown.maybe_set(headers, routing_val, endpoint) do
-      limit_entries =
-        headers
-        |> HeaderParser.parse()
-        |> Enum.map(
-          &LimitEntry.update!(&1, %{
-            routing_val: routing_val,
-            endpoint: endpoint,
-            source: :headers
-          })
-        )
-
+         :ok <- Cooldown.maybe_set(headers, routing_val, endpoint),
+         limit_entries <- HeaderParser.parse(headers, routing_val, endpoint) do
       {:ok, limit_entries}
     end
   end

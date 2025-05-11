@@ -157,20 +157,22 @@ defmodule LolApi.RateLimiter.KeyValueParser do
       iex> LolApi.RateLimiter.KeyValueParser.parse_live_counters_with_values(flat)
       [
         %LolApi.RateLimiter.LimitEntry{
-          routing_val: "euw1",
+          routing_val: :euw1,
           endpoint: "/lol/summoner",
           limit_type: :method,
           window_sec: 1,
           count: 1,
-          ttl: 59
+          ttl: 59,
+          source: :live
         },
         %LolApi.RateLimiter.LimitEntry{
-          routing_val: "euw1",
+          routing_val: :euw1,
           endpoint: "/lol/summoner",
           limit_type: :method,
           window_sec: 120,
           count: 3,
-          ttl: 118
+          ttl: 118,
+          source: :live
         }
       ]
   """
