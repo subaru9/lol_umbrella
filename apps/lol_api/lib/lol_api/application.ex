@@ -18,8 +18,7 @@ defmodule LolApi.Application do
          PrometheusTelemetry.Metrics.Finch.metrics()
        ]},
       # Rate Limiter Redis Pool
-      {Redix, name: :redix},
-      {SharedUtils.Redis, LolApi.Config.rate_limiter_redis_pool_opts()},
+      {SharedUtils.Redis, [LolApi.Config.pool_opts(), LolApi.Config.worker_opts()]}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

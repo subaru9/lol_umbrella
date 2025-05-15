@@ -39,9 +39,11 @@ defmodule LolApi.RateLimiter.RedisCommand do
   def inc_with_exp(key, ttl) do
     script = """
     local count = redis.call("INCR", KEYS[1])
+
     if count == 1 then
-    redis.call("EXPIRE", KEYS[1], tonumber(ARGV[1]))
+      redis.call("EXPIRE", KEYS[1], tonumber(ARGV[1]))
     end
+
     return count
     """
 
@@ -124,21 +126,23 @@ defmodule LolApi.RateLimiter.RedisCommand do
   @spec get_keys_with_values(keys) :: command()
   def get_keys_with_values(keys) do
     script = """
-    results={}
+    local res={}
+
     for i, key in ipairs(KEYS) do
-      val = redis.call("GET", key)
-      table.insert(results, key)
-      table.insert(results, val)
+      local val = redis.call("GET", key)
+      table.insert(res, key)
+      table.insert(res, val)
     end
-    return results
+
+    return res
     """
 
-    [
+    List.flatten([
       "EVAL",
       script,
       to_string(length(keys)),
       keys
-    ]
+    ])
   end
 
   @doc """
@@ -159,29 +163,32 @@ defmodule LolApi.RateLimiter.RedisCommand do
   @spec get_cooldown_key_with_largest_ttl(cooldown_keys()) :: command()
   def get_cooldown_key_with_largest_ttl(keys) do
     script = """
-    results={}
-    max_ttl = 0
-    winner_key = nil
+    local res={}
+    local max_ttl = 0
+    local winner_key = nil
+
     for i, key in ipairs(KEYS) do
-      current_ttl = redis.call("TTL", key)
+      local current_ttl = redis.call("TTL", key)
       if current_ttl > 0 and current_ttl > max_ttl then
         max_ttl = current_ttl
         winner_key = key
       end
     end
+
     if winner_key then
-      table.insert(results, winner_key)
-      table.insert(results, max_ttl)
+      table.insert(res, winner_key)
+      table.insert(res, max_ttl)
     end
-    return results
+
+    return res
     """
 
-    [
+    List.flatten([
       "EVAL",
       script,
       to_string(length(keys)),
       keys
-    ]
+    ])
   end
 
   @doc """
@@ -249,9 +256,9 @@ defmodule LolApi.RateLimiter.RedisCommand do
           local ttl = redis.call("TTL", KEYS[i])
           return {"throttle", ttl}
 
-          table.insert(results, KEYS[i])
-          table.insert(results, tostring(count))
-          table.insert(results, tostring(ttl))
+          table.insert(throttle_results, KEYS[i])
+          table.insert(throttle_results, tostring(count))
+          table.insert(throttle_results, tostring(ttl))
 
           return throttle_results
         end
@@ -266,9 +273,9 @@ defmodule LolApi.RateLimiter.RedisCommand do
         if count == 1 then
           redis.call("EXPIRE", KEYS[i], ttl)
         end
-        table.insert(results, KEYS[i])
-        table.insert(results, tostring(count))
-        table.insert(results, tostring(ttl))
+        table.insert(allow_results, KEYS[i])
+        table.insert(allow_results, tostring(count))
+        table.insert(allow_results, tostring(ttl))
       end
 
       return allow_results

@@ -60,6 +60,7 @@ defmodule LolApi.RateLimiter.Cooldown do
 
       iex> headers = [
       ...>   {"retry-after", "5"},
+      ...>   {"date", "Tue, 01 Apr 2025 18:15:26 GMT"},
       ...>   {"x-rate-limit-type", "application"}
       ...> ]
       iex> LolApi.RateLimiter.Cooldown.create?(headers)
@@ -86,8 +87,9 @@ defmodule LolApi.RateLimiter.Cooldown do
     headers
     |> Enum.into(%{})
     |> then(
-      &(Map.has_key?(&1, HeaderParser.retry_after_name()) and
-          Map.has_key?(&1, HeaderParser.limit_type_name()))
+      &(Map.has_key?(&1, HeaderParser.header_name!(:retry_after)) and
+          Map.has_key?(&1, HeaderParser.header_name!(:limit_type)) and
+          Map.has_key?(&1, HeaderParser.header_name!(:request_time)))
     )
   end
 
@@ -99,19 +101,24 @@ defmodule LolApi.RateLimiter.Cooldown do
 
   Raises if the TTL is non-positive.
   """
-  @spec maybe_set(HeaderParser.headers(), routing_val(), endpoint()) ::
-          :ok | {:error, ErrorMessage.t()}
-  def maybe_set(headers, routing_val, endpoint) do
+  @spec maybe_set(headers(), routing_val(), endpoint()) :: :ok | {:error, ErrorMessage.t()}
+  def maybe_set(headers, routing_val, endpoint, opts \\ []) do
+    pool_name = Keyword.get(opts, :pool_name, Config.pool_name())
+    now = Keyword.get(opts, :now, DateTime.utc_now(:second))
+
     with true <- create?(headers),
          limit_entry <- HeaderParser.extract_cooldown(headers, routing_val, endpoint),
-         ttl <- TTL.adjust!(limit_entry),
+         ttl <- TTL.adjust!(limit_entry, now),
+         updated = LimitEntry.update!(limit_entry, %{adjusted_ttl: ttl}),
          key <- KeyBuilder.build(:cooldown, limit_entry) do
       key
       |> RedisCommand.build_cooldown_setex_command(ttl)
-      |> Redis.with_pool(Config.redis_pool_name(), fn
+      |> Redis.with_pool(pool_name, fn
         "OK" ->
-          updated = LimitEntry.update!(limit_entry, %{adjusted_ttl: ttl})
-          Logger.debug("[LolApi.RateLimiter.Cooldown] Coldown set. Details: #{inspect(updated)}")
+          Logger.debug(
+            "[LolApi.RateLimiter.Cooldown] Coldown set. Details: \n#{inspect(updated, pretty: true)}"
+          )
+
           :ok
       end)
     else
@@ -119,7 +126,7 @@ defmodule LolApi.RateLimiter.Cooldown do
         limit_entry = HeaderParser.extract_cooldown(headers, routing_val, endpoint)
 
         Logger.debug(
-          "[LolApi.RateLimiter.Cooldown] Cooldown skipped. Details: #{inspect(limit_entry)}"
+          "[LolApi.RateLimiter.Cooldown] Cooldown skipped. Details: \n#{inspect(limit_entry, pretty: true)}"
         )
 
         :ok
@@ -146,10 +153,12 @@ defmodule LolApi.RateLimiter.Cooldown do
   ```
   """
   @spec status(routing_val(), endpoint()) :: allow | throttle | {:error, ErrorMessage.t()}
-  def status(routing_val, endpoint) do
+  def status(routing_val, endpoint, opts \\ []) do
+    pool_name = Keyword.get(opts, :pool_name, Config.pool_name())
+
     KeyBuilder.build_cooldown_keys(routing_val, endpoint)
     |> RedisCommand.get_cooldown_key_with_largest_ttl()
-    |> Redis.with_pool(Config.redis_pool_name(), fn
+    |> Redis.with_pool(pool_name, fn
       [] ->
         limit_entry =
           LimitEntry.create!(%{routing_val: routing_val, endpoint: endpoint, source: :cooldown})

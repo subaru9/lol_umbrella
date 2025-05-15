@@ -1,5 +1,14 @@
 import Config
 
+config :lol_api, :rate_limiter,
+  pool: %{
+    pool_name: :lol_api_rate_limiter_pool_test,
+    registration_scope: :global,
+    pool_size: 10,
+    max_overflow: 10
+  },
+  pool_worker: %{host: "localhost", port: 6378}
+
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used
@@ -21,7 +30,7 @@ config :lol_web, LolWeb.Endpoint,
   server: false
 
 # Print only warnings and errors during test
-config :logger, level: :warning
+config :logger, level: :debug
 
 # Initialize plugs at runtime for faster test compilation
 config :phoenix, :plug_init_mode, :runtime

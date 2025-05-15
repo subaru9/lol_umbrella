@@ -1,5 +1,14 @@
 import Config
 
+config :lol_api, :rate_limiter,
+  pool: %{
+    pool_name: :lol_api_rate_limiter_pool,
+    registration_scope: :global,
+    pool_size: 10,
+    max_overflow: 10
+  },
+  pool_worker: %{host: "localhost", port: 6379}
+
 # Configure your database
 config :lol, Lol.Repo,
   username: "postgres",

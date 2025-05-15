@@ -49,7 +49,7 @@ defmodule LolApi.RateLimiter.Policy do
   def increment(key, ttl) do
     key
     |> RedisCommand.inc_with_exp(ttl)
-    |> Redis.with_pool(Config.redis_pool_name(), & &1)
+    |> Redis.with_pool(Config.pool_name(), & &1)
   end
 
   @doc """
@@ -63,7 +63,7 @@ defmodule LolApi.RateLimiter.Policy do
     routing_val
     |> KeyBuilder.build_policy_window_keys(endpoint)
     |> RedisCommand.check_keys_existance()
-    |> Redis.with_pool(Config.redis_pool_name(), &{:ok, &1 === 2})
+    |> Redis.with_pool(Config.pool_name(), &{:ok, &1 === 2})
   end
 
   @doc """
@@ -92,7 +92,7 @@ defmodule LolApi.RateLimiter.Policy do
   def load_policy_windows(routing_val, endpoint) do
     with keys <- KeyBuilder.build_policy_window_keys(routing_val, endpoint),
          command <- RedisCommand.get_keys_with_values(keys) do
-      Redis.with_pool(command, Config.redis_pool_name(), fn
+      Redis.with_pool(command, Config.pool_name(), fn
         [] ->
           {:error,
            ErrorMessage.not_found(
@@ -111,7 +111,7 @@ defmodule LolApi.RateLimiter.Policy do
     with {:ok, limit_entries} <- load_policy_windows(routing_val, endpoint),
          limit_keys <- Enum.map(limit_entries, &KeyBuilder.build(:policy_limit, &1)),
          command <- RedisCommand.get_keys_with_values(limit_keys) do
-      Redis.with_pool(command, Config.redis_pool_name(), fn
+      Redis.with_pool(command, Config.pool_name(), fn
         [] ->
           {:error,
            ErrorMessage.not_found("[LolApi.RateLimiter.Policy] Policy limits not found", command)}
@@ -126,7 +126,7 @@ defmodule LolApi.RateLimiter.Policy do
   def enforce(limit_entries) do
     limit_entries
     |> RedisCommand.check_and_increment()
-    |> Redis.with_pool(Config.redis_pool_name(), fn
+    |> Redis.with_pool(Config.pool_name(), fn
       ["allow" | flat_list] ->
         {:allow, KeyValueParser.parse_live_counters_with_values(flat_list)}
 
@@ -164,6 +164,6 @@ defmodule LolApi.RateLimiter.Policy do
     |> HeaderParser.parse()
     |> Enum.map(&LimitEntry.update!(&1, %{routing_val: routing_val, endpoint: endpoint}))
     |> RedisCommand.build_policy_mset_command()
-    |> Redis.with_pool(Config.redis_pool_name(), fn "OK" -> :ok end)
+    |> Redis.with_pool(Config.pool_name(), fn "OK" -> :ok end)
   end
 end

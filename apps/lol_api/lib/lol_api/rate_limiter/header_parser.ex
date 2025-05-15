@@ -23,8 +23,24 @@ defmodule LolApi.RateLimiter.HeaderParser do
   @type limit_entry :: LimitEntry.t()
   @type limit_entries :: [limit_entry()]
 
-  def retry_after_name, do: @retry_after
-  def limit_type_name, do: @limit_type
+  @type header_name :: String.t()
+
+  @spec header_name!(atom()) :: header_name()
+  def header_name!(nickname) do
+    case nickname do
+      :limit_type ->
+        @limit_type
+
+      :retry_after ->
+        @retry_after
+
+      :request_time ->
+        @date
+
+      _ ->
+        raise("Unknown header.")
+    end
+  end
 
   @doc """
   Builds a minimal `%LimitEntry{}` representing a cooldown

@@ -18,22 +18,29 @@ defmodule LolApi.RateLimiter.TTL do
       ...>   request_time: ~U[2025-04-01 12:00:00Z],
       ...>   retry_after: 120
       ...> }
-      iex> DateTime.freeze(~U[2025-04-01 12:01:00Z], fn ->
-      ...>   LolApi.RateLimiter.TTL.adjust!(entry)
-      ...> end)
+      iex> LolApi.RateLimiter.TTL.adjust!(entry, ~U[2025-04-01 12:01:00Z])
       60
   """
-  @spec adjust!(LimitEntry.t()) :: non_neg_integer()
-  def adjust!(%LimitEntry{retry_after: retry_after, request_time: request_time} = limit_entry)
-      when not is_nil(retry_after) do
+  @spec adjust!(LimitEntry.t(), DateTime.t()) :: non_neg_integer()
+  def adjust!(
+        %LimitEntry{retry_after: retry_after, request_time: request_time} = limit_entry,
+        utc_now_sec \\ DateTime.utc_now(:second)
+      )
+      when not is_nil(retry_after) and not is_nil(request_time) do
     ttl =
       request_time
       |> DateTime.add(retry_after, :second)
-      |> DateTime.diff(DateTime.utc_now(:second), :second)
+      |> DateTime.diff(utc_now_sec, :second)
 
+    # This should never happen unless headers are malformed or `now` is behind request time
     if ttl < 0 do
       msg =
-        "Cooldown TTL became negative (#{ttl} seconds left) for entry: #{inspect(limit_entry)}"
+        """
+        [LolApi.RateLimiter.TTL] Cooldown TTL became negative (#{ttl} seconds). 
+        Details: 
+        Riot's request time: #{inspect(limit_entry, pretty: true)}
+        The time it hit this function: #{inspect(utc_now_sec)}
+        """
 
       Logger.error(msg)
       raise(msg)

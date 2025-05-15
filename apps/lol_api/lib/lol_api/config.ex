@@ -6,13 +6,19 @@ defmodule LolApi.Config do
   def api_key!, do: Application.fetch_env!(:lol_api, :api_key)
   def current_env, do: Application.fetch_env!(@app, :env)
 
-  def rate_limiter_redis_pool_opts do
+  def pool_opts do
     @app
     |> Application.fetch_env!(:rate_limiter)
-    |> Keyword.fetch!(:redis_pool)
+    |> Keyword.fetch!(:pool)
   end
 
-  def redis_pool_name do
-    Map.fetch!(rate_limiter_redis_pool_opts(), :pool_name)
+  def pool_name do
+    Map.fetch!(pool_opts(), :pool_name)
+  end
+
+  def worker_opts do
+    @app
+    |> Application.fetch_env!(:rate_limiter)
+    |> Keyword.fetch!(:pool_worker)
   end
 end

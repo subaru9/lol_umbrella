@@ -13,17 +13,6 @@ import Config, only: [config: 2, config: 3, import_config: 1, config_env: 0, con
 config :lol_api, :env, config_env()
 config :lol_api, :api_key, System.get_env("RIOT_API_KEY")
 
-config :lol_api, :rate_limiter,
-  limiter_type: LolApi.RateLimiter.LeakyBucket,
-  # respects riot's long term limit - 100 requests per 2 minutes
-  requests_per_second: 0.83,
-  redis_pool: %{
-    pool_name: :lol_api_rate_limiter_pool,
-    registration_scope: :global,
-    pool_size: 10,
-    max_overflow: 10
-  }
-
 config :lol,
   ecto_repos: [Lol.Repo]
 
