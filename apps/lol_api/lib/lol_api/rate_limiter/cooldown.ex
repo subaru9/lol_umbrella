@@ -28,6 +28,8 @@ defmodule LolApi.RateLimiter.Cooldown do
   @type allow :: {:allow, limit_entries()}
   @type throttle :: {:throttle, limit_entries()}
 
+  @type opts :: Keyword.t()
+
   @doc """
   Builds a cooldown Redis key from the given `routing_val`, `endpoint`, and Riot response headers.
 
@@ -101,7 +103,7 @@ defmodule LolApi.RateLimiter.Cooldown do
 
   Raises if the TTL is non-positive.
   """
-  @spec maybe_set(headers(), routing_val(), endpoint()) :: :ok | {:error, ErrorMessage.t()}
+  @spec maybe_set(headers(), routing_val(), endpoint(), opts()) :: :ok | {:error, ErrorMessage.t()}
   def maybe_set(headers, routing_val, endpoint, opts \\ []) do
     pool_name = Keyword.get(opts, :pool_name, Config.pool_name())
     now = Keyword.get(opts, :now, DateTime.utc_now(:second))
@@ -146,13 +148,13 @@ defmodule LolApi.RateLimiter.Cooldown do
 
   ```elixir
       Cooldown.status("na1", "/lol/summoner")
-      {:allow, %LimitEntry{...}}
+      [ {:allow, %LimitEntry{...}} ]
 
       Cooldown.status("na1", "/lol/spectator/v3/featured-games")
-      {:throttle, %LimitEntry{ttl: 17, source: :cooldown, ...}}
+      [ {:throttle, %LimitEntry{ttl: 17, source: :cooldown, ...}} ]
   ```
   """
-  @spec status(routing_val(), endpoint()) :: allow | throttle | {:error, ErrorMessage.t()}
+  @spec status(routing_val(), endpoint(), opts()) :: allow | throttle | {:error, ErrorMessage.t()}
   def status(routing_val, endpoint, opts \\ []) do
     pool_name = Keyword.get(opts, :pool_name, Config.pool_name())
 

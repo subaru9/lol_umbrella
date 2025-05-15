@@ -1,6 +1,8 @@
 defmodule LolApi.AccountsTest do
   use ExUnit.Case
 
+  alias SharedUtils.Test.Support.HTTPSandbox
+
   describe "&get_account/3" do
     test "returns puuid for game_name and tag_line" do
       region = "americas"

@@ -1,6 +1,7 @@
 defmodule LolApi.Base do
   alias LolApi.Config
   alias SharedUtils.JSON
+  alias SharedUtils.Test.Support.HTTPSandbox
 
   def request(url) do
     if Config.current_env() === :test do

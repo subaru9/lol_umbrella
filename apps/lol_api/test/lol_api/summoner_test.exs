@@ -1,6 +1,8 @@
 defmodule LolApi.SummonerTest do
   use ExUnit.Case
 
+  alias SharedUtils.Test.Support.HTTPSandbox
+
   describe "&get_summoner/2" do
     test "returns summoner details for a valid summoner_id" do
       url =

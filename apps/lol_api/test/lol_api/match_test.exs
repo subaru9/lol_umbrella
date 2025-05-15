@@ -1,6 +1,8 @@
 defmodule LolApi.MatchTest do
   use ExUnit.Case
 
+  alias SharedUtils.Test.Support.HTTPSandbox
+
   describe "&get_match/2" do
     test "returns core match statistics for a valid match_id" do
       region = "europe"

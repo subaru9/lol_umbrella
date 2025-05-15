@@ -1,6 +1,8 @@
 defmodule LolApi.MatchesTest do
   use ExUnit.Case
 
+  alias SharedUtils.Test.Support.HTTPSandbox
+
   describe "&get_matches/4" do
     test "returns a list of match IDs for the given puuid and time range" do
       url =

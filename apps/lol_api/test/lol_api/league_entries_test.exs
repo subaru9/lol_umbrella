@@ -2,6 +2,8 @@ defmodule LolApi.LeagueEntriesTest do
   use ExUnit.Case
   doctest LolApi
 
+  alias SharedUtils.Test.Support.HTTPSandbox
+
   describe "&get_league_entries/4" do
     test "returns data with summoner_id per entry" do
       page1 =

@@ -1,4 +1,4 @@
-defmodule HTTPSandbox do
+defmodule SharedUtils.Test.Support.HTTPSandbox do
   @moduledoc """
   For mocking out HTTP GET requests in test.
 
