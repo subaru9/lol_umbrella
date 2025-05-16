@@ -7,7 +7,8 @@ config :lol_api, :rate_limiter,
     pool_size: 10,
     max_overflow: 10
   },
-  pool_worker: %{host: "localhost", port: 6378}
+  pool_worker: %{host: "localhost", port: 6378},
+  max_cooldown_ttl: 1800
 
 # Configure your database
 #

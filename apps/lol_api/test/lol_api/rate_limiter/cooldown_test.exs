@@ -41,6 +41,50 @@ defmodule LolApi.RateLimiter.CooldownTest do
 
       {:allow, [_limit_entry]} = Cooldown.status(routing_val, endpoint, pool_name: pool_name)
     end
+
+    test "skips cooldown if ttl is zero", %{pool_name: pool_name} do
+      headers = [
+        {"x-rate-limit-type", "application"},
+        {"date", "Tue, 02 Apr 2025 18:00:00 GMT"},
+        {"retry-after", "120"}
+      ]
+
+      routing_val = "euw1"
+      endpoint = "/lol/summoner"
+      fixed_now = ~U[2025-04-02 18:02:00Z]
+
+      assert Cooldown.maybe_set(headers, routing_val, endpoint,
+               pool_name: pool_name,
+               now: fixed_now
+             ) === :ok
+
+      {:allow, [limit_entry]} = Cooldown.status(routing_val, endpoint, pool_name: pool_name)
+      assert is_nil(limit_entry.ttl)
+    end
+
+    test "skips cooldown if ttl exceeds max configured", %{pool_name: pool_name} do
+      max = LolApi.Config.max_cooldown_ttl()
+
+      headers = [
+        {"x-rate-limit-type", "application"},
+        {"date", "Tue, 02 Apr 2025 18:00:00 GMT"},
+        # intentionally 1 min above max
+        {"retry-after", Integer.to_string(max + 60)}
+      ]
+
+      routing_val = "euw1"
+      endpoint = "/lol/summoner"
+      fixed_now = ~U[2025-04-02 18:00:00Z]
+
+      assert Cooldown.maybe_set(headers, routing_val, endpoint,
+               pool_name: pool_name,
+               now: fixed_now
+             ) === :ok
+
+      # Check that no cooldown was persisted
+      {:allow, [limit_entry]} = Cooldown.status(routing_val, endpoint, pool_name: pool_name)
+      assert is_nil(limit_entry.ttl)
+    end
   end
 
   describe "&status/3" do
@@ -92,6 +136,8 @@ defmodule LolApi.RateLimiter.CooldownTest do
       {:throttle, [limit_entry]} = Cooldown.status(routing_val, endpoint, pool_name: pool_name)
       assert limit_entry.ttl === 239
       assert limit_entry.limit_type === :service
+      assert limit_entry.routing_val === :euw1
+      assert limit_entry.source === :cooldown
     end
   end
 end

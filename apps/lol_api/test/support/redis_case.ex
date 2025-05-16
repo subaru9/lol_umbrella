@@ -1,8 +1,14 @@
 defmodule LolApi.RedisCase do
+  @moduledoc """
+  Isolates Redis per test via DB leasing and a supervised pool.
+
+  Enables safe `async: true` tests without flushing shared state.
+  """
+
   use ExUnit.CaseTemplate
 
-  alias SharedUtils.Test.Support.RedisSandbox
   alias SharedUtils.Redis.Pool
+  alias SharedUtils.Test.Support.RedisSandbox
 
   setup do
     database = RedisSandbox.check_out()

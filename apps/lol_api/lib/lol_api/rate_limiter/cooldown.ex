@@ -103,14 +103,15 @@ defmodule LolApi.RateLimiter.Cooldown do
 
   Raises if the TTL is non-positive.
   """
-  @spec maybe_set(headers(), routing_val(), endpoint(), opts()) :: :ok | {:error, ErrorMessage.t()}
+  @spec maybe_set(headers(), routing_val(), endpoint(), opts()) ::
+          :ok | {:error, ErrorMessage.t()}
   def maybe_set(headers, routing_val, endpoint, opts \\ []) do
     pool_name = Keyword.get(opts, :pool_name, Config.pool_name())
     now = Keyword.get(opts, :now, DateTime.utc_now(:second))
 
     with true <- create?(headers),
          limit_entry <- HeaderParser.extract_cooldown(headers, routing_val, endpoint),
-         ttl <- TTL.adjust!(limit_entry, now),
+         {:ok, ttl} <- TTL.adjust(limit_entry, now),
          updated = LimitEntry.update!(limit_entry, %{adjusted_ttl: ttl}),
          key <- KeyBuilder.build(:cooldown, limit_entry) do
       key
@@ -124,12 +125,19 @@ defmodule LolApi.RateLimiter.Cooldown do
           :ok
       end)
     else
+      {:error, :ttl_invalid} ->
+        Logger.debug("[LolApi.RateLimiter.Cooldown] Cooldown skipped. TTL invalid.")
+
+        :ok
+
       false ->
         limit_entry = HeaderParser.extract_cooldown(headers, routing_val, endpoint)
 
-        Logger.debug(
-          "[LolApi.RateLimiter.Cooldown] Cooldown skipped. Details: \n#{inspect(limit_entry, pretty: true)}"
-        )
+        Logger.debug("""
+        [LolApi.RateLimiter.Cooldown] Cooldown skipped. Details: \n
+          #{inspect(limit_entry, pretty: true)} \n
+          #{inspect(headers, pretty: true)}
+        """)
 
         :ok
     end
