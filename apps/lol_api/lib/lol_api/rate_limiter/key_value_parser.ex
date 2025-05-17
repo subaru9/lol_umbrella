@@ -179,11 +179,11 @@ defmodule LolApi.RateLimiter.KeyValueParser do
   @spec parse_live_counters_with_values(key_value_flat_list()) :: limit_entries()
   def parse_live_counters_with_values(flat_list) do
     flat_list
-    |> Enum.chunk_every(3)
-    |> Enum.map(fn [live_key, count, ttl] ->
+    |> Enum.chunk_every(4)
+    |> Enum.map(fn [live_key, count, count_limit, ttl] ->
       live_key
       |> KeyParser.parse()
-      |> LimitEntry.update!(%{count: count, ttl: ttl})
+      |> LimitEntry.update!(%{count: count, count_limit: count_limit, ttl: ttl})
     end)
   end
 
