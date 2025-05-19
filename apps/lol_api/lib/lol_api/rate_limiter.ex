@@ -47,7 +47,7 @@ defmodule LolApi.RateLimiter do
     with {:allow, _limit_entries} <- Cooldown.status(routing_val, endpoint),
          {:ok, true} <- Policy.known?(routing_val, endpoint),
          {:ok, limit_entries} <- Policy.fetch(routing_val, endpoint),
-         {:allow, policy_entries} <- Policy.enforce(limit_entries) do
+         {:allow, policy_entries} <- Policy.enforce_and_maybe_incr_counter(limit_entries) do
       Logger.debug("Request allowed. Details: #{inspect(policy_entries)}")
       {:allow, policy_entries}
     else

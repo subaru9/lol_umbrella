@@ -151,8 +151,8 @@ defmodule LolApi.RateLimiter.KeyValueParser do
   ## Example
 
       iex> flat = [
-      ...>   "lol_api:v1:live:euw1:/lol/summoner:method:window:1", "1", "59",
-      ...>   "lol_api:v1:live:euw1:/lol/summoner:method:window:120", "3", "118"
+      ...>   "lol_api:v1:live:euw1:/lol/summoner:method:window:1", "1", "20", "59",
+      ...>   "lol_api:v1:live:euw1:/lol/summoner:method:window:120", "3", "100", "118"
       ...> ]
       iex> LolApi.RateLimiter.KeyValueParser.parse_live_counters_with_values(flat)
       [
@@ -162,6 +162,7 @@ defmodule LolApi.RateLimiter.KeyValueParser do
           limit_type: :method,
           window_sec: 1,
           count: 1,
+          count_limit: 20,
           ttl: 59,
           source: :live
         },
@@ -171,6 +172,7 @@ defmodule LolApi.RateLimiter.KeyValueParser do
           limit_type: :method,
           window_sec: 120,
           count: 3,
+          count_limit: 100,
           ttl: 118,
           source: :live
         }

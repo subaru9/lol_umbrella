@@ -33,32 +33,6 @@ defmodule LolApi.RateLimiter.RedisCommand do
     ]
   end
 
-  @doc """
-  Atomic operation with Lua script needed for rate limiter.
-  """
-  def inc_with_exp(key, ttl) do
-    script = """
-    local count = redis.call("INCR", KEYS[1])
-
-    if count == 1 then
-      redis.call("EXPIRE", KEYS[1], tonumber(ARGV[1]))
-    end
-
-    return count
-    """
-
-    [
-      "EVAL",
-      script,
-      # how many redis keys will be listed below, other will be arguments
-      "1",
-      # one key as stated above, available in Lua as KEYS[1]
-      key,
-      # will be ARGV[1] in Lua script
-      to_string(ttl)
-    ]
-  end
-
   def check_keys_existance(keys) when is_list(keys) do
     [
       "EXISTS" | keys
@@ -219,7 +193,7 @@ defmodule LolApi.RateLimiter.RedisCommand do
       ...>     count_limit: 50
       ...>   }
       ...> ]
-      iex> result = LolApi.RateLimiter.RedisCommand.check_and_increment(entries)
+      iex> result = LolApi.RateLimiter.RedisCommand.enforce_and_maybe_incr_counter(entries)
       iex> [
       ...>   "EVAL",
       ...>   _script,
@@ -235,15 +209,15 @@ defmodule LolApi.RateLimiter.RedisCommand do
       ...>   "120"
       ...> ] = result
   """
-  @spec check_and_increment(limit_entries()) :: command()
-  def check_and_increment(limit_entries) do
+  @spec enforce_and_maybe_incr_counter(limit_entries()) :: command()
+  def enforce_and_maybe_incr_counter(limit_entries) do
     {counters, limits, ttls} = prepare_check_payload(limit_entries)
 
-    check_and_increment_from_keys(counters, limits, ttls)
+    enforce_and_maybe_incr_counter_from_keys(counters, limits, ttls)
   end
 
-  @spec check_and_increment_from_keys(keys, keys, ttls) :: command()
-  defp check_and_increment_from_keys(counter_keys, limit_keys, ttls) do
+  @spec enforce_and_maybe_incr_counter_from_keys(keys, keys, ttls) :: command()
+  defp enforce_and_maybe_incr_counter_from_keys(counter_keys, limit_keys, ttls) do
     script =
       """
       for i = 1, #KEYS do

@@ -44,16 +44,6 @@ defmodule LolApi.RateLimiter.Policy do
 
   @type opts :: Keyword.t()
 
-  # add telemetry later
-  # Counter: how many times each key is incremented
-  # Distribution / histogram: counter values
-  @spec increment(redis_key(), ttl_seconds()) :: non_neg_integer() | {:error, ErrorMessage.t()}
-  def increment(key, ttl) do
-    key
-    |> RedisCommand.inc_with_exp(ttl)
-    |> Redis.with_pool(Config.pool_name(), & &1)
-  end
-
   @doc """
   Checks if rate-limiting policy exists in Redis.
 
@@ -185,12 +175,13 @@ defmodule LolApi.RateLimiter.Policy do
     end
   end
 
-  @spec enforce(limit_entries(), opts()) :: allow() | throttle() | {:error, ErrorMessage.t()}
-  def enforce(limit_entries, opts \\ []) do
+  @spec enforce_and_maybe_incr_counter(limit_entries(), opts()) ::
+          allow() | throttle() | {:error, ErrorMessage.t()}
+  def enforce_and_maybe_incr_counter(limit_entries, opts \\ []) do
     pool_name = Keyword.get(opts, :pool_name, Config.pool_name())
 
     limit_entries
-    |> RedisCommand.check_and_increment()
+    |> RedisCommand.enforce_and_maybe_incr_counter()
     |> Redis.with_pool(pool_name, fn
       ["allow" | flat_list] ->
         {:allow, KeyValueParser.parse_live_counters_with_values(flat_list)}

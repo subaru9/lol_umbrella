@@ -63,9 +63,9 @@ defmodule LolApi.RateLimiter.PolicyTest do
 
       assert :ok === Policy.set(headers, routing_val, endpoint, pool_name: pool_name)
       {:ok, limit_entries} = Policy.fetch(routing_val, endpoint, pool_name: pool_name)
-      {:allow, _} = Policy.enforce(limit_entries, pool_name: pool_name)
-      {:allow, _} = Policy.enforce(limit_entries, pool_name: pool_name)
-      {:throttle, [le]} = Policy.enforce(limit_entries, pool_name: pool_name)
+      {:allow, _} = Policy.enforce_and_maybe_incr_counter(limit_entries, pool_name: pool_name)
+      {:allow, _} = Policy.enforce_and_maybe_incr_counter(limit_entries, pool_name: pool_name)
+      {:throttle, [le]} = Policy.enforce_and_maybe_incr_counter(limit_entries, pool_name: pool_name)
       assert :live === le.source
       assert :method === le.limit_type
       assert 2 === le.count_limit
