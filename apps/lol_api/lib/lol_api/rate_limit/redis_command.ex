@@ -1,8 +1,8 @@
-defmodule LolApi.RateLimiter.RedisCommand do
+defmodule LolApi.RateLimit.RedisCommand do
   @moduledoc """
   Domain-aware redis commands
   """
-  alias LolApi.RateLimiter.{KeyBuilder, KeyValueBuilder, LimitEntry}
+  alias LolApi.RateLimit.{KeyBuilder, KeyValueBuilder, LimitEntry}
 
   @type key :: String.t()
   @type keys :: list(key)
@@ -18,7 +18,7 @@ defmodule LolApi.RateLimiter.RedisCommand do
 
   ## Examples
 
-      iex> LolApi.RateLimiter.RedisCommand.build_cooldown_setex_command("lol_api:v1:cooldown:na1:application", 120)
+      iex> LolApi.RateLimit.RedisCommand.build_cooldown_setex_command("lol_api:v1:cooldown:na1:application", 120)
       ["SETEX", "lol_api:v1:cooldown:na1:application", "120", "120"]
   """
   @spec build_cooldown_setex_command(key, ttl) :: command()
@@ -47,21 +47,21 @@ defmodule LolApi.RateLimiter.RedisCommand do
   ## Example
 
       iex> entries = [
-      ...>   %LolApi.RateLimiter.LimitEntry{
+      ...>   %LolApi.RateLimit.LimitEntry{
       ...>     routing_val: "na1",
       ...>     endpoint: "/lol/summoner",
       ...>     limit_type: :application,
       ...>     window_sec: 120,
       ...>     count_limit: 100
       ...>   },
-      ...>   %LolApi.RateLimiter.LimitEntry{
+      ...>   %LolApi.RateLimit.LimitEntry{
       ...>     routing_val: "na1",
       ...>     endpoint: "/lol/summoner",
       ...>     limit_type: :application,
       ...>     window_sec: 1,
       ...>     count_limit: 20
       ...>   },
-      ...>   %LolApi.RateLimiter.LimitEntry{
+      ...>   %LolApi.RateLimit.LimitEntry{
       ...>     routing_val: "na1",
       ...>     endpoint: "/lol/summoner",
       ...>     limit_type: :method,
@@ -69,7 +69,7 @@ defmodule LolApi.RateLimiter.RedisCommand do
       ...>     count_limit: 50
       ...>   }
       ...> ]
-      iex> LolApi.RateLimiter.RedisCommand.build_policy_mset_command(entries)
+      iex> LolApi.RateLimit.RedisCommand.build_policy_mset_command(entries)
       [
         "MSET",
         "riot:v1:policy:na1:/lol/summoner:application:windows", "120,1",
@@ -171,21 +171,21 @@ defmodule LolApi.RateLimiter.RedisCommand do
   ## Example
 
       iex> entries = [
-      ...>   %LolApi.RateLimiter.LimitEntry{
+      ...>   %LolApi.RateLimit.LimitEntry{
       ...>     routing_val: "na1",
       ...>     endpoint: "/lol/summoner",
       ...>     limit_type: :application,
       ...>     window_sec: 120,
       ...>     count_limit: 100
       ...>   },
-      ...>   %LolApi.RateLimiter.LimitEntry{
+      ...>   %LolApi.RateLimit.LimitEntry{
       ...>     routing_val: "na1",
       ...>     endpoint: "/lol/summoner",
       ...>     limit_type: :application,
       ...>     window_sec: 1,
       ...>     count_limit: 20
       ...>   },
-      ...>   %LolApi.RateLimiter.LimitEntry{
+      ...>   %LolApi.RateLimit.LimitEntry{
       ...>     routing_val: "na1",
       ...>     endpoint: "/lol/summoner",
       ...>     limit_type: :method,
@@ -193,7 +193,7 @@ defmodule LolApi.RateLimiter.RedisCommand do
       ...>     count_limit: 50
       ...>   }
       ...> ]
-      iex> result = LolApi.RateLimiter.RedisCommand.enforce_and_maybe_incr_counter(entries)
+      iex> result = LolApi.RateLimit.RedisCommand.enforce_and_maybe_incr_counter(entries)
       iex> [
       ...>   "EVAL",
       ...>   _script,

@@ -1,10 +1,10 @@
-defmodule LolApi.RateLimiter.CooldownTest do
+defmodule LolApi.RateLimit.CooldownTest do
   @moduledoc false
 
   use LolApi.RedisCase, async: true
-  doctest LolApi.RateLimiter.Cooldown
+  doctest LolApi.RateLimit.Cooldown
 
-  alias LolApi.RateLimiter.Cooldown
+  alias LolApi.RateLimit.Cooldown
 
   describe "&maybe_set/4" do
     test "having all required headers sets the cooldown key", %{pool_name: pool_name} do

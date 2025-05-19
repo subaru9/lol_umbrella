@@ -1,8 +1,8 @@
-defmodule LolApi.RateLimiter.KeyParser do
+defmodule LolApi.RateLimit.KeyParser do
   @moduledoc """
   Parses structured Redis rate-limiting keys into maps for telemetry.
   """
-  alias LolApi.RateLimiter.LimitEntry
+  alias LolApi.RateLimit.LimitEntry
 
   @type redis_key :: String.t()
 
@@ -13,8 +13,8 @@ defmodule LolApi.RateLimiter.KeyParser do
 
   ## Examples
 
-      iex> LolApi.RateLimiter.KeyParser.parse("riot:v1:policy:euw1:/lol/match:application:window:120:limit")
-      %LolApi.RateLimiter.LimitEntry{
+      iex> LolApi.RateLimit.KeyParser.parse("riot:v1:policy:euw1:/lol/match:application:window:120:limit")
+      %LolApi.RateLimit.LimitEntry{
         routing_val: :euw1,
         endpoint: "/lol/match",
         limit_type: :application,
@@ -22,30 +22,30 @@ defmodule LolApi.RateLimiter.KeyParser do
         source: :policy
       }
 
-      iex> LolApi.RateLimiter.KeyParser.parse("riot:v1:policy:euw1:/lol/match:application:windows")
-      %LolApi.RateLimiter.LimitEntry{
+      iex> LolApi.RateLimit.KeyParser.parse("riot:v1:policy:euw1:/lol/match:application:windows")
+      %LolApi.RateLimit.LimitEntry{
         routing_val: :euw1,
         endpoint: "/lol/match",
         limit_type: :application,
         source: :policy
       }
 
-      iex> LolApi.RateLimiter.KeyParser.parse("lol_api:v1:cooldown:na1:application")
-      %LolApi.RateLimiter.LimitEntry{
+      iex> LolApi.RateLimit.KeyParser.parse("lol_api:v1:cooldown:na1:application")
+      %LolApi.RateLimit.LimitEntry{
         routing_val: :na1,
         limit_type: :application,
         source: :cooldown
       }
 
-      iex> LolApi.RateLimiter.KeyParser.parse("lol_api:v1:cooldown:na1:service")
-      %LolApi.RateLimiter.LimitEntry{
+      iex> LolApi.RateLimit.KeyParser.parse("lol_api:v1:cooldown:na1:service")
+      %LolApi.RateLimit.LimitEntry{
         routing_val: :na1,
         limit_type: :service,
         source: :cooldown
       }
 
-      iex> LolApi.RateLimiter.KeyParser.parse("lol_api:v1:cooldown:na1:/lol/summoner:method")
-      %LolApi.RateLimiter.LimitEntry{
+      iex> LolApi.RateLimit.KeyParser.parse("lol_api:v1:cooldown:na1:/lol/summoner:method")
+      %LolApi.RateLimit.LimitEntry{
         routing_val: :na1,
         endpoint: "/lol/summoner",
         limit_type: :method,
@@ -130,6 +130,6 @@ defmodule LolApi.RateLimiter.KeyParser do
   end
 
   defp parse_parts(parts) do
-    raise "[LolApi.RateLimiter.KeyParser] Unmached key parts: #{inspect(parts)}"
+    raise "[LolApi.RateLimit.KeyParser] Unmached key parts: #{inspect(parts)}"
   end
 end

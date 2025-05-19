@@ -12,7 +12,7 @@ defmodule LolApi.RedisCase do
 
   setup do
     database = RedisSandbox.check_out()
-    pool_name = :"rate_limiter_pool_database_#{database}"
+    pool_name = :"rate_limit_pool_database_#{database}"
 
     {:ok, pid} = start_supervised({Pool, [%{pool_name: pool_name}, %{database: database}]})
 

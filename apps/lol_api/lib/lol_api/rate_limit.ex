@@ -1,4 +1,4 @@
-defmodule LolApi.RateLimiter do
+defmodule LolApi.RateLimit do
   @moduledoc """
   Central definition of rate-limiting scope types.
 
@@ -14,8 +14,8 @@ defmodule LolApi.RateLimiter do
   All three types may be used for **cooldowns**, depending on what `X-Rate-Limit-Type` is returned in a 429 response.
   """
 
-  alias LolApi.RateLimiter.LimitEntry
-  alias LolApi.RateLimiter.{Cooldown, HeaderParser, Policy}
+  alias LolApi.RateLimit.LimitEntry
+  alias LolApi.RateLimit.{Cooldown, HeaderParser, Policy}
 
   require Logger
 

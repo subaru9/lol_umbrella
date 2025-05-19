@@ -1,9 +1,9 @@
-defmodule LolApi.RateLimiter.HeaderParser do
+defmodule LolApi.RateLimit.HeaderParser do
   @moduledoc """
   Parses Riot headers with rate limiting info into LimitEntry
   """
-  alias LolApi.RateLimiter
-  alias LolApi.RateLimiter.LimitEntry
+  alias LolApi.RateLimit
+  alias LolApi.RateLimit.LimitEntry
 
   require Logger
 
@@ -17,8 +17,8 @@ defmodule LolApi.RateLimiter.HeaderParser do
 
   @type headers :: [{String.t(), String.t()}]
 
-  @type routing_val :: RateLimiter.routing_val()
-  @type endpoint :: RateLimiter.endpoint()
+  @type routing_val :: RateLimit.routing_val()
+  @type endpoint :: RateLimit.endpoint()
 
   @type limit_entry :: LimitEntry.t()
   @type limit_entries :: [limit_entry()]
@@ -53,8 +53,8 @@ defmodule LolApi.RateLimiter.HeaderParser do
       ...>   {"retry-after", "42"},
       ...>   {"date", "Tue, 01 Apr 2025 18:15:26 GMT"}
       ...> ]
-      iex> LolApi.RateLimiter.HeaderParser.extract_cooldown(headers, "na1", "/lol/summoner")
-      %LolApi.RateLimiter.LimitEntry{
+      iex> LolApi.RateLimit.HeaderParser.extract_cooldown(headers, "na1", "/lol/summoner")
+      %LolApi.RateLimit.LimitEntry{
         routing_val: :na1,
         endpoint: "/lol/summoner",
         limit_type: :application,
@@ -94,10 +94,10 @@ defmodule LolApi.RateLimiter.HeaderParser do
       ...>   {"x-method-rate-limit", "50:10"},
       ...>   {"x-method-rate-limit-count", "20:10"}
       ...> ]
-      iex> result = LolApi.RateLimiter.HeaderParser.parse(headers)
+      iex> result = LolApi.RateLimit.HeaderParser.parse(headers)
       iex> Enum.sort_by(result, &{&1.limit_type, &1.window_sec})
       [
-        %LolApi.RateLimiter.LimitEntry{
+        %LolApi.RateLimit.LimitEntry{
           limit_type: :application,
           window_sec: 1,
           count_limit: 20,
@@ -108,7 +108,7 @@ defmodule LolApi.RateLimiter.HeaderParser do
           retry_after: nil,
           routing_val: nil
         },
-        %LolApi.RateLimiter.LimitEntry{
+        %LolApi.RateLimit.LimitEntry{
           limit_type: :application,
           window_sec: 120,
           count_limit: 100,
@@ -119,7 +119,7 @@ defmodule LolApi.RateLimiter.HeaderParser do
           retry_after: nil,
           routing_val: nil
         },
-        %LolApi.RateLimiter.LimitEntry{
+        %LolApi.RateLimit.LimitEntry{
           limit_type: :method,
           window_sec: 10,
           count_limit: 50,

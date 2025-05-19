@@ -1,4 +1,4 @@
-defmodule LolApi.RateLimiter.KeyBuilder do
+defmodule LolApi.RateLimit.KeyBuilder do
   @moduledoc """
   Builds Redis-compatible keys for all rate-limiting operations.
 
@@ -12,8 +12,8 @@ defmodule LolApi.RateLimiter.KeyBuilder do
   All keys are namespaced (`riot` or `lol_api`) and versioned (`v1`) for consistency.
   """
 
-  alias LolApi.RateLimiter
-  alias LolApi.RateLimiter.LimitEntry
+  alias LolApi.RateLimit
+  alias LolApi.RateLimit.LimitEntry
 
   @our_prefix "lol_api"
   @riot_prefix "riot"
@@ -49,44 +49,44 @@ defmodule LolApi.RateLimiter.KeyBuilder do
 
   ## Examples
 
-      iex> entry = %LolApi.RateLimiter.LimitEntry{
+      iex> entry = %LolApi.RateLimit.LimitEntry{
       ...>   routing_val: "euw1",
       ...>   endpoint: "/lol/match/v5/matches",
       ...>   limit_type: :application,
       ...>   window_sec: 120,
       ...>   retry_after: 60
       ...> }
-      iex> LolApi.RateLimiter.KeyBuilder.build(:policy_limit, entry)
+      iex> LolApi.RateLimit.KeyBuilder.build(:policy_limit, entry)
       "riot:v1:policy:euw1:/lol/match/v5/matches:application:window:120:limit"
       iex>
-      iex> LolApi.RateLimiter.KeyBuilder.build(:policy_windows, entry)
+      iex> LolApi.RateLimit.KeyBuilder.build(:policy_windows, entry)
       "riot:v1:policy:euw1:/lol/match/v5/matches:application:windows"
       iex>
-      iex> LolApi.RateLimiter.KeyBuilder.build(:live_counter, entry)
+      iex> LolApi.RateLimit.KeyBuilder.build(:live_counter, entry)
       "lol_api:v1:live:euw1:/lol/match/v5/matches:application:window:120"
       iex>
-      iex> LolApi.RateLimiter.KeyBuilder.build(:authoritative_counter, entry)
+      iex> LolApi.RateLimit.KeyBuilder.build(:authoritative_counter, entry)
       "riot:v1:authoritative:euw1:/lol/match/v5/matches:application:window:120"
       iex>
-      iex> LolApi.RateLimiter.KeyBuilder.build(:cooldown, entry)
+      iex> LolApi.RateLimit.KeyBuilder.build(:cooldown, entry)
       "lol_api:v1:cooldown:euw1:application"
 
-      iex> method_entry = %LolApi.RateLimiter.LimitEntry{
+      iex> method_entry = %LolApi.RateLimit.LimitEntry{
       ...>   routing_val: "euw1",
       ...>   endpoint: "/lol/spectator/v3/featured-games",
       ...>   limit_type: :method,
       ...>   retry_after: 30
       ...> }
-      iex> LolApi.RateLimiter.KeyBuilder.build(:cooldown, method_entry)
+      iex> LolApi.RateLimit.KeyBuilder.build(:cooldown, method_entry)
       "lol_api:v1:cooldown:euw1:/lol/spectator/v3/featured-games:method"
 
-      iex> service_entry = %LolApi.RateLimiter.LimitEntry{
+      iex> service_entry = %LolApi.RateLimit.LimitEntry{
       ...>   routing_val: "na1",
       ...>   endpoint: nil,
       ...>   limit_type: :service,
       ...>   retry_after: 45
       ...> }
-      iex> LolApi.RateLimiter.KeyBuilder.build(:cooldown, service_entry)
+      iex> LolApi.RateLimit.KeyBuilder.build(:cooldown, service_entry)
       "lol_api:v1:cooldown:na1:service"
 
   """
@@ -141,7 +141,7 @@ defmodule LolApi.RateLimiter.KeyBuilder do
 
   ## Example
 
-      iex> LolApi.RateLimiter.KeyBuilder.build_policy_window_keys("na1", "/lol/summoner")
+      iex> LolApi.RateLimit.KeyBuilder.build_policy_window_keys("na1", "/lol/summoner")
       [
         "riot:v1:policy:na1:/lol/summoner:method:windows",
         "riot:v1:policy:na1:/lol/summoner:application:windows"
@@ -150,7 +150,7 @@ defmodule LolApi.RateLimiter.KeyBuilder do
   @spec build_policy_window_keys(routing_val(), endpoint()) :: list(key)
   def build_policy_window_keys(routing_val, endpoint) do
     Enum.map(
-      RateLimiter.policy_limit_types(),
+      RateLimit.policy_limit_types(),
       &build(
         :policy_windows,
         LimitEntry.create!(%{routing_val: routing_val, endpoint: endpoint, limit_type: &1})
@@ -165,7 +165,7 @@ defmodule LolApi.RateLimiter.KeyBuilder do
 
   ## Example
 
-      iex> LolApi.RateLimiter.KeyBuilder.build_cooldown_keys("na1", "/lol/summoner")
+      iex> LolApi.RateLimit.KeyBuilder.build_cooldown_keys("na1", "/lol/summoner")
       [
         "lol_api:v1:cooldown:na1:/lol/summoner:method",
         "lol_api:v1:cooldown:na1:service",
@@ -176,7 +176,7 @@ defmodule LolApi.RateLimiter.KeyBuilder do
   @spec build_cooldown_keys(routing_val(), endpoint()) :: [String.t()]
   def build_cooldown_keys(routing_val, endpoint) do
     Enum.map(
-      RateLimiter.limit_types(),
+      RateLimit.limit_types(),
       &build(
         :cooldown,
         LimitEntry.create!(%{routing_val: routing_val, endpoint: endpoint, limit_type: &1})

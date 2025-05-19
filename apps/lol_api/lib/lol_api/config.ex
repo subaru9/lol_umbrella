@@ -8,7 +8,7 @@ defmodule LolApi.Config do
 
   def pool_opts do
     @app
-    |> Application.fetch_env!(:rate_limiter)
+    |> Application.fetch_env!(:rate_limit)
     |> Keyword.fetch!(:pool)
   end
 
@@ -18,13 +18,13 @@ defmodule LolApi.Config do
 
   def max_cooldown_ttl do
     @app
-    |> Application.fetch_env!(:rate_limiter)
+    |> Application.fetch_env!(:rate_limit)
     |> Keyword.fetch!(:max_cooldown_ttl)
   end
 
   def worker_opts do
     @app
-    |> Application.fetch_env!(:rate_limiter)
+    |> Application.fetch_env!(:rate_limit)
     |> Keyword.fetch!(:pool_worker)
   end
 end

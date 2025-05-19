@@ -1,8 +1,8 @@
-defmodule LolApi.RateLimiter.TTL do
+defmodule LolApi.RateLimit.TTL do
   @moduledoc false
 
   alias LolApi.Config
-  alias LolApi.RateLimiter.LimitEntry
+  alias LolApi.RateLimit.LimitEntry
 
   require Logger
 
@@ -15,11 +15,11 @@ defmodule LolApi.RateLimiter.TTL do
 
   ## Examples
 
-      iex> entry = %LolApi.RateLimiter.LimitEntry{
+      iex> entry = %LolApi.RateLimit.LimitEntry{
       ...>   request_time: ~U[2025-04-01 12:00:00Z],
       ...>   retry_after: 120
       ...> }
-      iex> LolApi.RateLimiter.TTL.adjust(entry, ~U[2025-04-01 12:01:00Z])
+      iex> LolApi.RateLimit.TTL.adjust(entry, ~U[2025-04-01 12:01:00Z])
       60
   """
   @spec adjust(LimitEntry.t(), DateTime.t()) ::
@@ -38,7 +38,7 @@ defmodule LolApi.RateLimiter.TTL do
       ttl <= 0 or ttl > Config.max_cooldown_ttl() ->
         msg =
           """
-          [LolApi.RateLimiter.TTL] Cooldown TTL is invalid. 
+          [LolApi.RateLimit.TTL] Cooldown TTL is invalid. 
           Details:\n 
           Limit Entry: #{inspect(limit_entry, pretty: true)},\n
           The time it hit this function: #{inspect(utc_now_sec)},\n

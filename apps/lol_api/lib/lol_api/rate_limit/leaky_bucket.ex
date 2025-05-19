@@ -1,4 +1,4 @@
-defmodule LolApi.RateLimiter.LeakyBucket do
+defmodule LolApi.RateLimit.LeakyBucket do
   use GenServer
 
   require Logger
@@ -34,7 +34,7 @@ defmodule LolApi.RateLimiter.LeakyBucket do
         %{queue_length: original_queue_length, queue: queue} = state
       ) do
     updated_queue = :queue.in(from, queue)
-    Logger.debug("[RateLimiter.LeakyBucket] Request added to queue: #{inspect(from)}")
+    Logger.debug("[RateLimit.LeakyBucket] Request added to queue: #{inspect(from)}")
 
     updated_state =
       state
@@ -63,7 +63,7 @@ defmodule LolApi.RateLimiter.LeakyBucket do
     {{:value, requesting_process}, updated_queue} = :queue.out(queue)
 
     GenServer.reply(requesting_process, :ok)
-    Logger.debug("[RateLimiter.LeakyBucket] Request processed: #{inspect(requesting_process)}")
+    Logger.debug("[RateLimit.LeakyBucket] Request processed: #{inspect(requesting_process)}")
 
     updated_state =
       state

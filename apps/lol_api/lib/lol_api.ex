@@ -3,8 +3,8 @@ defmodule LolApi do
   Provides access to Riot Games API
   """
 
-  alias LolApi.Embeds
   alias LolApi.Base
+  alias LolApi.Embeds
 
   @type division :: String.t()
   @type game_name :: String.t()

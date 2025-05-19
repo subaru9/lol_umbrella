@@ -1,9 +1,9 @@
-defmodule LolApi.RateLimiter.KeyValueParser do
+defmodule LolApi.RateLimit.KeyValueParser do
   @moduledoc """
   Parses Redis keys with values into LimitEntry
   """
 
-  alias LolApi.RateLimiter.{KeyParser, LimitEntry}
+  alias LolApi.RateLimit.{KeyParser, LimitEntry}
 
   @type limit_entry :: LimitEntry.t()
   @type limit_entries :: [limit_entry()]
@@ -20,9 +20,9 @@ defmodule LolApi.RateLimiter.KeyValueParser do
       ...>   "riot:v1:policy:na1:/lol/summoner:application:windows", "120,1",
       ...>   "riot:v1:policy:na1:/lol/summoner:method:windows", "10"
       ...> ]
-      iex> LolApi.RateLimiter.KeyValueParser.parse_policy_windows(flat)
+      iex> LolApi.RateLimit.KeyValueParser.parse_policy_windows(flat)
       [
-        %LolApi.RateLimiter.LimitEntry{
+        %LolApi.RateLimit.LimitEntry{
           endpoint: "/lol/summoner",
           limit_type: :application,
           routing_val: :na1,
@@ -35,7 +35,7 @@ defmodule LolApi.RateLimiter.KeyValueParser do
           adjusted_ttl: nil,
           source: :policy
         },
-        %LolApi.RateLimiter.LimitEntry{
+        %LolApi.RateLimit.LimitEntry{
           endpoint: "/lol/summoner",
           limit_type: :application,
           routing_val: :na1,
@@ -48,7 +48,7 @@ defmodule LolApi.RateLimiter.KeyValueParser do
           adjusted_ttl: nil,
           source: :policy
         },
-        %LolApi.RateLimiter.LimitEntry{
+        %LolApi.RateLimit.LimitEntry{
           endpoint: "/lol/summoner",
           limit_type: :method,
           routing_val: :na1,
@@ -86,9 +86,9 @@ defmodule LolApi.RateLimiter.KeyValueParser do
       ...>   "riot:v1:policy:na1:/lol/summoner:application:window:120:limit", "100",
       ...>   "riot:v1:policy:na1:/lol/summoner:method:window:10:limit", "50"
       ...> ]
-      iex> LolApi.RateLimiter.KeyValueParser.parse_policy_limits(flat_list)
+      iex> LolApi.RateLimit.KeyValueParser.parse_policy_limits(flat_list)
       [
-        %LolApi.RateLimiter.LimitEntry{
+        %LolApi.RateLimit.LimitEntry{
           routing_val: :na1,
           endpoint: "/lol/summoner",
           limit_type: :application,
@@ -101,7 +101,7 @@ defmodule LolApi.RateLimiter.KeyValueParser do
           adjusted_ttl: nil,
           source: :policy
         },
-        %LolApi.RateLimiter.LimitEntry{
+        %LolApi.RateLimit.LimitEntry{
           routing_val: :na1,
           endpoint: "/lol/summoner",
           limit_type: :application,
@@ -114,7 +114,7 @@ defmodule LolApi.RateLimiter.KeyValueParser do
           adjusted_ttl: nil,
           source: :policy
         },
-        %LolApi.RateLimiter.LimitEntry{
+        %LolApi.RateLimit.LimitEntry{
           routing_val: :na1,
           endpoint: "/lol/summoner",
           limit_type: :method,
@@ -154,9 +154,9 @@ defmodule LolApi.RateLimiter.KeyValueParser do
       ...>   "lol_api:v1:live:euw1:/lol/summoner:method:window:1", "1", "20", "59",
       ...>   "lol_api:v1:live:euw1:/lol/summoner:method:window:120", "3", "100", "118"
       ...> ]
-      iex> LolApi.RateLimiter.KeyValueParser.parse_live_counters_with_values(flat)
+      iex> LolApi.RateLimit.KeyValueParser.parse_live_counters_with_values(flat)
       [
-        %LolApi.RateLimiter.LimitEntry{
+        %LolApi.RateLimit.LimitEntry{
           routing_val: :euw1,
           endpoint: "/lol/summoner",
           limit_type: :method,
@@ -166,7 +166,7 @@ defmodule LolApi.RateLimiter.KeyValueParser do
           ttl: 59,
           source: :live
         },
-        %LolApi.RateLimiter.LimitEntry{
+        %LolApi.RateLimit.LimitEntry{
           routing_val: :euw1,
           endpoint: "/lol/summoner",
           limit_type: :method,
@@ -197,8 +197,8 @@ defmodule LolApi.RateLimiter.KeyValueParser do
   ## Example
 
       iex> key = "lol_api:v1:cooldown:na1:/lol/summoner:method"
-      iex> LolApi.RateLimiter.KeyValueParser.parse_cooldown(key, 42)
-      %LolApi.RateLimiter.LimitEntry{
+      iex> LolApi.RateLimit.KeyValueParser.parse_cooldown(key, 42)
+      %LolApi.RateLimit.LimitEntry{
         routing_val: :na1,
         endpoint: "/lol/summoner",
         limit_type: :method,

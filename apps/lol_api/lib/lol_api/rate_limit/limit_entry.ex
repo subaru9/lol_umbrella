@@ -1,4 +1,4 @@
-defmodule LolApi.RateLimiter.LimitEntry do
+defmodule LolApi.RateLimit.LimitEntry do
   @moduledoc """
   Defines the canonical structure for a single rate-limit rule.
 
@@ -24,14 +24,14 @@ defmodule LolApi.RateLimiter.LimitEntry do
   import Ecto.Changeset,
     only: [cast: 3, validate_number: 3, apply_action!: 2]
 
-  alias LolApi.RateLimiter
+  alias LolApi.RateLimit
   alias SharedUtils.RiotRouting
 
   @type limit_type :: :application | :method
   @type t :: %__MODULE__{
           routing_val: RiotRouting.routing_val_t() | nil,
           endpoint: String.t() | nil,
-          limit_type: RateLimiter.limit_type() | nil,
+          limit_type: RateLimit.limit_type() | nil,
           window_sec: pos_integer() | nil,
           count_limit: pos_integer() | nil,
           count: non_neg_integer(),
@@ -45,7 +45,7 @@ defmodule LolApi.RateLimiter.LimitEntry do
   @type attrs :: %{
           optional(:routing_val) => RiotRouting.routing_val_t() | String.t(),
           optional(:endpoint) => String.t(),
-          optional(:limit_type) => RateLimiter.limit_type() | String.t(),
+          optional(:limit_type) => RateLimit.limit_type() | String.t(),
           optional(:window_sec) => pos_integer() | String.t(),
           optional(:count_limit) => pos_integer() | String.t(),
           optional(:count) => non_neg_integer() | String.t(),
@@ -74,7 +74,7 @@ defmodule LolApi.RateLimiter.LimitEntry do
   embedded_schema do
     field :endpoint, :string
     field :routing_val, Ecto.Enum, values: RiotRouting.routing_vals()
-    field :limit_type, Ecto.Enum, values: RateLimiter.limit_types()
+    field :limit_type, Ecto.Enum, values: RateLimit.limit_types()
 
     field :window_sec, :integer
     field :count_limit, :integer
@@ -111,7 +111,7 @@ defmodule LolApi.RateLimiter.LimitEntry do
       ...>   "count" => 0,
       ...>   "request_time" => "Tue, 01 Apr 2025 18:15:26 GMT"
       ...> }
-      iex> LolApi.RateLimiter.LimitEntry.create!(attrs)
+      iex> LolApi.RateLimit.LimitEntry.create!(attrs)
       %{
         limit_type: :application,
         window_sec: 120,

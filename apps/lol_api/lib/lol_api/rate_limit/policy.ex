@@ -1,4 +1,4 @@
-defmodule LolApi.RateLimiter.Policy do
+defmodule LolApi.RateLimit.Policy do
   @moduledoc """
   Handles rate-limiting logic using atomic Redis counters.
 
@@ -15,9 +15,9 @@ defmodule LolApi.RateLimiter.Policy do
   while minimizing Redis roundtrips.
   """
   alias LolApi.Config
-  alias LolApi.RateLimiter
+  alias LolApi.RateLimit
 
-  alias LolApi.RateLimiter.{
+  alias LolApi.RateLimit.{
     HeaderParser,
     KeyBuilder,
     KeyValueParser,
@@ -32,7 +32,7 @@ defmodule LolApi.RateLimiter.Policy do
 
   @type routing_val :: String.t()
   @type endpoint :: String.t()
-  @type limit_type :: RateLimiter.limit_type()
+  @type limit_type :: RateLimit.limit_type()
 
   @type limit_entry :: LimitEntry.t()
   @type limit_entries :: [limit_entry()]
@@ -71,7 +71,7 @@ defmodule LolApi.RateLimiter.Policy do
 
   Returns a list of `%LimitEntry{}` structs like:
 
-      %LolApi.RateLimiter.LimitEntry{
+      %LolApi.RateLimit.LimitEntry{
         routing_val: :na1,
         endpoint: "/lol/summoner",
         limit_type: :application,
@@ -92,7 +92,7 @@ defmodule LolApi.RateLimiter.Policy do
         [] ->
           {:error,
            ErrorMessage.not_found(
-             "[LolApi.RateLimiter.Policy] Policy windows not found",
+             "[LolApi.RateLimit.Policy] Policy windows not found",
              command
            )}
 
@@ -167,7 +167,7 @@ defmodule LolApi.RateLimiter.Policy do
       Redis.with_pool(command, pool_name, fn
         [] ->
           {:error,
-           ErrorMessage.not_found("[LolApi.RateLimiter.Policy] Policy limits not found", command)}
+           ErrorMessage.not_found("[LolApi.RateLimit.Policy] Policy limits not found", command)}
 
         flat_list ->
           {:ok, KeyValueParser.parse_policy_limits(flat_list)}

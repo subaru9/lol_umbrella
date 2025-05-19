@@ -1,8 +1,8 @@
-defmodule LolApi.RateLimiter.KeyValueBuilder do
+defmodule LolApi.RateLimit.KeyValueBuilder do
   @moduledoc """
   Build Redis compatible key with values to be used in Redis commands
   """
-  alias LolApi.RateLimiter.{KeyBuilder, LimitEntry}
+  alias LolApi.RateLimit.{KeyBuilder, LimitEntry}
 
   @doc """
   Builds one `:policy_limit` Redis key for each `%LimitEntry{}`.
@@ -13,21 +13,21 @@ defmodule LolApi.RateLimiter.KeyValueBuilder do
   ## Example
 
       iex> entries = [
-      ...>   %LolApi.RateLimiter.LimitEntry{
+      ...>   %LolApi.RateLimit.LimitEntry{
       ...>     routing_val: "na1",
       ...>     endpoint: "/lol/summoner",
       ...>     limit_type: :application,
       ...>     window_sec: 120,
       ...>     count_limit: 100
       ...>   },
-      ...>   %LolApi.RateLimiter.LimitEntry{
+      ...>   %LolApi.RateLimit.LimitEntry{
       ...>     routing_val: "na1",
       ...>     endpoint: "/lol/summoner",
       ...>     limit_type: :application,
       ...>     window_sec: 1,
       ...>     count_limit: 20
       ...>   },
-      ...>   %LolApi.RateLimiter.LimitEntry{
+      ...>   %LolApi.RateLimit.LimitEntry{
       ...>     routing_val: "na1",
       ...>     endpoint: "/lol/summoner",
       ...>     limit_type: :method,
@@ -35,7 +35,7 @@ defmodule LolApi.RateLimiter.KeyValueBuilder do
       ...>     count_limit: 50
       ...>   }
       ...> ]
-      iex> LolApi.RateLimiter.KeyValueBuilder.build_policy_limit_entries(entries)
+      iex> LolApi.RateLimit.KeyValueBuilder.build_policy_limit_entries(entries)
       [
         {"riot:v1:policy:na1:/lol/summoner:application:window:120:limit", "100"},
         {"riot:v1:policy:na1:/lol/summoner:application:window:1:limit", "20"},
@@ -61,26 +61,26 @@ defmodule LolApi.RateLimiter.KeyValueBuilder do
   ## Example
 
       iex> entries = [
-      ...>   %LolApi.RateLimiter.LimitEntry{
+      ...>   %LolApi.RateLimit.LimitEntry{
       ...>     routing_val: "na1",
       ...>     endpoint: "/lol/summoner",
       ...>     limit_type: :application,
       ...>     window_sec: 120
       ...>   },
-      ...>   %LolApi.RateLimiter.LimitEntry{
+      ...>   %LolApi.RateLimit.LimitEntry{
       ...>     routing_val: "na1",
       ...>     endpoint: "/lol/summoner",
       ...>     limit_type: :application,
       ...>     window_sec: 1
       ...>   },
-      ...>   %LolApi.RateLimiter.LimitEntry{
+      ...>   %LolApi.RateLimit.LimitEntry{
       ...>     routing_val: "na1",
       ...>     endpoint: "/lol/summoner",
       ...>     limit_type: :method,
       ...>     window_sec: 10
       ...>   }
       ...> ]
-      iex> LolApi.RateLimiter.KeyValueBuilder.build_policy_window_entries(entries)
+      iex> LolApi.RateLimit.KeyValueBuilder.build_policy_window_entries(entries)
       [
         {"riot:v1:policy:na1:/lol/summoner:application:windows", "120,1"},
         {"riot:v1:policy:na1:/lol/summoner:method:windows", "10"}

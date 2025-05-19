@@ -1,8 +1,8 @@
 import Config
 
-config :lol_api, :rate_limiter,
+config :lol_api, :rate_limit,
   pool: %{
-    pool_name: :lol_api_rate_limiter_pool,
+    pool_name: :lol_api_rate_limit_pool,
     registration_scope: :global,
     pool_size: 10,
     max_overflow: 10

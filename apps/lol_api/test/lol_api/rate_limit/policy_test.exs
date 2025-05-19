@@ -1,9 +1,9 @@
-defmodule LolApi.RateLimiter.PolicyTest do
+defmodule LolApi.RateLimit.PolicyTest do
   @moduledoc false
 
   use LolApi.RedisCase, async: true
 
-  alias LolApi.RateLimiter.Policy
+  alias LolApi.RateLimit.Policy
 
   describe "&policy_known?/3" do
     test "checks if rate-limiting policy exists in Redis", %{pool_name: pool_name} do

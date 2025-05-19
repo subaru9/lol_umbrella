@@ -26,20 +26,20 @@ defmodule LolApi.Application do
     opts = [strategy: :one_for_one, name: LolApi.Supervisor]
     {:ok, pid} = Supervisor.start_link(children, opts)
 
-    # {:ok, _rate_limiter_pid} = start_rate_limiter_as_global()
+    # {:ok, _rate_limit_pid} = start_rate_limit_as_global()
 
     {:ok, pid}
   end
 
-  def start_rate_limiter_as_global() do
+  def start_rate_limit_as_global() do
     [limiter_type: module, requests_per_second: rps] =
-      Application.fetch_env!(:lol_api, :rate_limiter)
+      Application.fetch_env!(:lol_api, :rate_limit)
 
     Singleton.start_child(
       LolApi.Singleton,
       module,
       [requests_per_second: rps],
-      LolApi.RateLimiter
+      LolApi.RateLimit
     )
   end
 end

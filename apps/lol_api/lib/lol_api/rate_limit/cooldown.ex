@@ -1,4 +1,4 @@
-defmodule LolApi.RateLimiter.Cooldown do
+defmodule LolApi.RateLimit.Cooldown do
   @moduledoc """
   Responsible for setting and enforcing cooldown policy
   """
@@ -6,7 +6,7 @@ defmodule LolApi.RateLimiter.Cooldown do
 
   alias LolApi.Config
 
-  alias LolApi.RateLimiter.{
+  alias LolApi.RateLimit.{
     HeaderParser,
     KeyBuilder,
     KeyValueParser,
@@ -44,7 +44,7 @@ defmodule LolApi.RateLimiter.Cooldown do
       ...>   {"date", "Tue, 01 Apr 2025 18:15:26 GMT"},
       ...>   {"retry-after", "120"}
       ...> ]
-      iex> LolApi.RateLimiter.Cooldown.build_key(headers, "na1", "/lol/summoner")
+      iex> LolApi.RateLimit.Cooldown.build_key(headers, "na1", "/lol/summoner")
       "lol_api:v1:cooldown:na1:application"
   """
   def build_key(headers, routing_val, endpoint) do
@@ -65,23 +65,23 @@ defmodule LolApi.RateLimiter.Cooldown do
       ...>   {"date", "Tue, 01 Apr 2025 18:15:26 GMT"},
       ...>   {"x-rate-limit-type", "application"}
       ...> ]
-      iex> LolApi.RateLimiter.Cooldown.create?(headers)
+      iex> LolApi.RateLimit.Cooldown.create?(headers)
       true
 
       iex> headers = [
       ...>   {"retry-after", "5"}
       ...> ]
-      iex> LolApi.RateLimiter.Cooldown.create?(headers)
+      iex> LolApi.RateLimit.Cooldown.create?(headers)
       false
 
       iex> headers = [
       ...>   {"x-rate-limit-type", "method"}
       ...> ]
-      iex> LolApi.RateLimiter.Cooldown.create?(headers)
+      iex> LolApi.RateLimit.Cooldown.create?(headers)
       false
 
       iex> headers = []
-      iex> LolApi.RateLimiter.Cooldown.create?(headers)
+      iex> LolApi.RateLimit.Cooldown.create?(headers)
       false
   """
   @spec create?(HeaderParser.headers()) :: boolean()
@@ -119,14 +119,14 @@ defmodule LolApi.RateLimiter.Cooldown do
       |> Redis.with_pool(pool_name, fn
         "OK" ->
           Logger.debug(
-            "[LolApi.RateLimiter.Cooldown] Coldown set. Details: \n#{inspect(updated, pretty: true)}"
+            "[LolApi.RateLimit.Cooldown] Coldown set. Details: \n#{inspect(updated, pretty: true)}"
           )
 
           :ok
       end)
     else
       {:error, :ttl_invalid} ->
-        Logger.debug("[LolApi.RateLimiter.Cooldown] Cooldown skipped. TTL invalid.")
+        Logger.debug("[LolApi.RateLimit.Cooldown] Cooldown skipped. TTL invalid.")
 
         :ok
 
@@ -134,7 +134,7 @@ defmodule LolApi.RateLimiter.Cooldown do
         limit_entry = HeaderParser.extract_cooldown(headers, routing_val, endpoint)
 
         Logger.debug("""
-        [LolApi.RateLimiter.Cooldown] Cooldown skipped. Details: \n
+        [LolApi.RateLimit.Cooldown] Cooldown skipped. Details: \n
           #{inspect(limit_entry, pretty: true)} \n
           #{inspect(headers, pretty: true)}
         """)
