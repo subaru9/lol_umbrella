@@ -132,7 +132,7 @@ defmodule LolApi.RateLimit.HeaderParser do
         }
       ]
   """
-  @spec parse(headers) :: limit_entries()
+  @spec parse(headers) :: limit_entries() | {:error, ErrorMessage.t()}
   def parse(headers) do
     map = Enum.into(headers, %{})
     request_time = map[@date]
@@ -155,19 +155,28 @@ defmodule LolApi.RateLimit.HeaderParser do
     )
   end
 
-  # limit header is missing but count header is present
-  defp parse_limits(nil = _limit_str, _count_str, _, _, _) do
-    Logger.warning(
-      "Riot's #{@app_limit} or #{@method_limit} header is missing. Can't derive window and quota."
-    )
+  # cover both headers missing, or just limit header is missing but count header is present
+  defp parse_limits(limit_str, count_str, limit_type, request_time, retry_after)
+       when (is_nil(limit_str) and is_nil(count_str)) or is_nil(limit_str) do
+    warning =
+      "[LolApi.RateLimit.HeaderParser] header is missing. Can't derive window_sec and count_limit."
 
-    []
+    Logger.warning(warning)
+
+    {:error,
+     ErrorMessage.internal_server_error(warning, %{
+       limit_str: limit_str,
+       count_str: count_str,
+       limit_type: limit_type,
+       request_time: request_time,
+       retry_after: retry_after
+     })}
   end
 
   # count header is missing, limit is present
   defp parse_limits(limit_str, nil = _count_str, type, request_time, retry_after) do
-    Logger.debug(
-      "Riot's #{@app_count} or #{@method_count} header is missing. Assuming it has value 0."
+    Logger.warning(
+      "[LolApi.RateLimit.HeaderParser] Riot's #{@app_count} or #{@method_count} header is missing. Assuming it has value 0."
     )
 
     limit_by_window = limit_str |> String.split(",") |> Map.new(&parse_entry/1)
@@ -184,12 +193,6 @@ defmodule LolApi.RateLimit.HeaderParser do
       }
       |> LimitEntry.create!()
     end
-  end
-
-  # both headers are missing
-  defp parse_limits(nil, nil, _, _, _) do
-    Logger.debug("Both Riot's rate limiter headers are missing")
-    []
   end
 
   defp parse_limits(limit_str, count_str, type, request_time, retry_after) do

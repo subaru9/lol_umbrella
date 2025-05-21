@@ -14,6 +14,7 @@ defmodule LolApi.RateLimit do
   All three types may be used for **cooldowns**, depending on what `X-Rate-Limit-Type` is returned in a 429 response.
   """
 
+  alias LolApi.Config
   alias LolApi.RateLimit.LimitEntry
   alias LolApi.RateLimit.{Cooldown, HeaderParser, Policy}
 
@@ -36,29 +37,37 @@ defmodule LolApi.RateLimit do
 
   @type headers :: [{String.t(), String.t()}]
 
+  @type opts :: Keyword.t()
+
   @spec limit_types :: [limit_type()]
   def limit_types, do: @limit_types
 
   @spec policy_limit_types :: [policy_limit_type()]
   def policy_limit_types, do: @policy_limit_types
 
-  @spec hit(routing_val, endpoint) :: allow | throttle | {:error, ErrorMessage.t()}
-  def hit(routing_val, endpoint) do
-    with {:allow, _limit_entries} <- Cooldown.status(routing_val, endpoint),
-         {:ok, true} <- Policy.known?(routing_val, endpoint),
-         {:ok, limit_entries} <- Policy.fetch(routing_val, endpoint),
-         {:allow, policy_entries} <- Policy.enforce_and_maybe_incr_counter(limit_entries) do
-      Logger.debug("Request allowed. Details: #{inspect(policy_entries)}")
+  @spec hit(routing_val(), endpoint(), opts()) :: allow | throttle | {:error, ErrorMessage.t()}
+  def hit(routing_val, endpoint, opts \\ []) do
+    with pool_name <- Keyword.get(opts, :pool_name, Config.pool_name()),
+         {:allow, _limit_entries} <- Cooldown.status(routing_val, endpoint, pool_name: pool_name),
+         {:ok, true} <- Policy.known?(routing_val, endpoint, pool_name: pool_name),
+         {:ok, limit_entries} <- Policy.fetch(routing_val, endpoint, pool_name: pool_name),
+         {:allow, policy_entries} <-
+           Policy.enforce_and_maybe_incr_counter(limit_entries, pool_name: pool_name) do
+      Logger.debug("Request allowed. Details: #{inspect(policy_entries, pretty: true)}")
       {:allow, policy_entries}
     else
       {:ok, false} ->
-        limit_entry = LimitEntry.create!(%{routing_val: routing_val, endpoint: endpoint})
-        Logger.debug("Policy unknown, making a blind request. Details: #{inspect(limit_entry)}")
+        limit_entry =
+          LimitEntry.create!(%{routing_val: routing_val, endpoint: endpoint, source: :policy})
 
-        {:allow, []}
+        Logger.debug(
+          "Policy unknown, making a blind request. Details: #{inspect(limit_entry, pretty: true)}"
+        )
+
+        {:allow, [limit_entry]}
 
       {:throttle, limit_entries} = throttle ->
-        Logger.debug("Request throttled. Details: #{inspect(limit_entries)}")
+        Logger.debug("Request throttled. Details: #{inspect(limit_entries, pretty: true)}")
         throttle
 
       {:error, _} = err ->
@@ -66,12 +75,15 @@ defmodule LolApi.RateLimit do
     end
   end
 
-  @spec refresh(headers(), routing_val(), endpoint()) ::
+  @spec refresh(headers(), routing_val(), endpoint(), opts()) ::
           {:ok, limit_entries()} | {:error, ErrorMessage.t()}
-  def refresh(headers, routing_val, endpoint) do
-    with {:ok, false} <- Policy.known?(routing_val, endpoint),
-         :ok <- Policy.set(headers, routing_val, endpoint),
-         :ok <- Cooldown.maybe_set(headers, routing_val, endpoint),
+  def refresh(headers, routing_val, endpoint, opts \\ []) do
+    with pool_name <- Keyword.get(opts, :pool_name, Config.pool_name()),
+         now <- Keyword.get(opts, :now, DateTime.utc_now(:second)),
+         :ok <-
+           Cooldown.maybe_set(headers, routing_val, endpoint, pool_name: pool_name, now: now),
+         {:ok, false} <- Policy.known?(routing_val, endpoint, pool_name: pool_name),
+         :ok <- Policy.set(headers, routing_val, endpoint, pool_name: pool_name),
          limit_entries <- HeaderParser.parse(headers, routing_val, endpoint) do
       {:ok, limit_entries}
     end

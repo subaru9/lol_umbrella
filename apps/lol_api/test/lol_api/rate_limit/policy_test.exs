@@ -46,7 +46,7 @@ defmodule LolApi.RateLimit.PolicyTest do
     end
   end
 
-  describe "&enforce/2" do
+  describe "&enforce_and_maybe_incr_counter/2" do
     test "check keys if count less then limit allow and increment counter, throttle otherwise", %{
       pool_name: pool_name
     } do
