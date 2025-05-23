@@ -219,8 +219,7 @@ defmodule LolApi.RateLimit.Policy do
     pool_name = Keyword.get(opts, :pool_name, Config.pool_name())
 
     headers
-    |> HeaderParser.parse()
-    |> Enum.map(&LimitEntry.update!(&1, %{routing_val: routing_val, endpoint: endpoint}))
+    |> HeaderParser.parse(routing_val, endpoint)
     |> RedisCommand.build_policy_mset_command()
     |> Redis.with_pool(pool_name, fn "OK" -> :ok end)
   end
