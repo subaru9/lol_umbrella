@@ -87,76 +87,88 @@ defmodule LolApi.RateLimit.HeaderParser do
 
   ## Examples
 
-      iex> headers = [
-      ...>   {"date", "Tue, 01 Apr 2025 18:15:26 GMT"},
-      ...>   {"x-app-rate-limit", "100:120,20:1"},
-      ...>   {"x-app-rate-limit-count", "20:120,2:1"},
-      ...>   {"x-method-rate-limit", "50:10"},
-      ...>   {"x-method-rate-limit-count", "20:10"}
-      ...> ]
-      iex> result = LolApi.RateLimit.HeaderParser.parse(headers)
-      iex> Enum.sort_by(result, &{&1.limit_type, &1.window_sec})
-      [
-        %LolApi.RateLimit.LimitEntry{
-          limit_type: :application,
-          window_sec: 1,
-          count_limit: 20,
-          count: 2,
-          request_time: ~U[2025-04-01 18:15:26Z],
-          endpoint: nil,
-          source: :headers,
-          retry_after: nil,
-          routing_val: nil
-        },
-        %LolApi.RateLimit.LimitEntry{
-          limit_type: :application,
-          window_sec: 120,
-          count_limit: 100,
-          count: 20,
-          request_time: ~U[2025-04-01 18:15:26Z],
-          endpoint: nil,
-          source: :headers,
-          retry_after: nil,
-          routing_val: nil
-        },
-        %LolApi.RateLimit.LimitEntry{
-          limit_type: :method,
-          window_sec: 10,
-          count_limit: 50,
-          count: 20,
-          request_time: ~U[2025-04-01 18:15:26Z],
-          endpoint: nil,
-          source: :headers,
-          retry_after: nil,
-          routing_val: nil
-        }
-      ]
+    iex> headers = [
+    ...>   {"date", "Tue, 01 Apr 2025 18:15:26 GMT"},
+    ...>   {"x-app-rate-limit", "100:120,20:1"},
+    ...>   {"x-app-rate-limit-count", "20:120,2:1"},
+    ...>   {"x-method-rate-limit", "50:10"},
+    ...>   {"x-method-rate-limit-count", "20:10"}
+    ...> ]
+    iex> result = LolApi.RateLimit.HeaderParser.parse(headers, "euw1", "/lol/summoner")
+    iex> Enum.sort_by(result, &{&1.limit_type, &1.window_sec})
+    [
+      %LolApi.RateLimit.LimitEntry{
+        limit_type: :application,
+        window_sec: 1,
+        count_limit: 20,
+        count: 2,
+        request_time: ~U[2025-04-01 18:15:26Z],
+        endpoint: "/lol/summoner",
+        source: :headers,
+        retry_after: nil,
+        routing_val: :euw1
+      },
+      %LolApi.RateLimit.LimitEntry{
+        limit_type: :application,
+        window_sec: 120,
+        count_limit: 100,
+        count: 20,
+        request_time: ~U[2025-04-01 18:15:26Z],
+        endpoint: "/lol/summoner",
+        source: :headers,
+        retry_after: nil,
+        routing_val: :euw1
+      },
+      %LolApi.RateLimit.LimitEntry{
+        limit_type: :method,
+        window_sec: 10,
+        count_limit: 50,
+        count: 20,
+        request_time: ~U[2025-04-01 18:15:26Z],
+        endpoint: "/lol/summoner",
+        source: :headers,
+        retry_after: nil,
+        routing_val: :euw1
+      }
+    ]
   """
-  @spec parse(headers) :: limit_entries() | {:error, ErrorMessage.t()}
-  def parse(headers) do
+  @spec parse(headers(), routing_val(), endpoint()) ::
+          limit_entries() | {:error, ErrorMessage.t()}
+  def parse(headers, routing_val, endpoint) do
     map = Enum.into(headers, %{})
     request_time = map[@date]
     retry_after = map[@retry_after]
 
-    parse_limits(map[@app_limit], map[@app_count], :application, request_time, retry_after) ++
-      parse_limits(map[@method_limit], map[@method_count], :method, request_time, retry_after)
-  end
-
-  @spec parse(headers(), routing_val(), endpoint()) :: limit_entries()
-  def parse(headers, routing_val, endpoint) do
-    headers
-    |> parse()
-    |> Enum.map(
-      &LimitEntry.update!(&1, %{
-        routing_val: routing_val,
-        endpoint: endpoint,
-        source: :headers
-      })
-    )
+    parse_limits(
+      map[@app_limit],
+      map[@app_count],
+      :application,
+      request_time,
+      retry_after,
+      routing_val,
+      endpoint
+    ) ++
+      parse_limits(
+        map[@method_limit],
+        map[@method_count],
+        :method,
+        request_time,
+        retry_after,
+        routing_val,
+        endpoint
+      )
   end
 
   # cover both headers missing, or just limit header is missing but count header is present
-  defp parse_limits(limit_str, count_str, limit_type, request_time, retry_after)
+  defp parse_limits(
+         limit_str,
+         count_str,
+         limit_type,
+         request_time,
+         retry_after,
+         routing_val,
+         endpoint
+       )
        when (is_nil(limit_str) and is_nil(count_str)) or is_nil(limit_str) do
     warning =
       "[LolApi.RateLimit.HeaderParser] header is missing. Can't derive window_sec and count_limit."
@@ -169,12 +181,22 @@ defmodule LolApi.RateLimit.HeaderParser do
        count_str: count_str,
        limit_type: limit_type,
        request_time: request_time,
-       retry_after: retry_after
+       retry_after: retry_after,
+       routing_val: routing_val,
+       endpoint: endpoint
      })}
   end
 
   # count header is missing, limit is present
-  defp parse_limits(limit_str, nil = _count_str, type, request_time, retry_after) do
+  defp parse_limits(
+         limit_str,
+         nil = _count_str,
+         type,
+         request_time,
+         retry_after,
+         routing_val,
+         endpoint
+       ) do
     Logger.warning(
       "[LolApi.RateLimit.HeaderParser] Riot's #{@app_count} or #{@method_count} header is missing. Assuming it has value 0."
     )
@@ -189,13 +211,15 @@ defmodule LolApi.RateLimit.HeaderParser do
         request_time: request_time,
         window_sec: window_sec,
         retry_after: retry_after,
+        routing_val: routing_val,
+        endpoint: endpoint,
         source: :headers
       }
       |> LimitEntry.create!()
     end
   end
 
-  defp parse_limits(limit_str, count_str, type, request_time, retry_after) do
+  defp parse_limits(limit_str, count_str, type, request_time, retry_after, routing_val, endpoint) do
     limit_by_window = limit_str |> String.split(",") |> Map.new(&parse_entry/1)
     count_by_window = count_str |> String.split(",") |> Map.new(&parse_entry/1)
 
@@ -207,6 +231,8 @@ defmodule LolApi.RateLimit.HeaderParser do
         request_time: request_time,
         window_sec: window_sec,
         retry_after: retry_after,
+        routing_val: routing_val,
+        endpoint: endpoint,
         source: :headers
       }
       |> LimitEntry.create!()
