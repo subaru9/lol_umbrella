@@ -2,6 +2,7 @@ defmodule LolApi.RateLimit.HeaderParser do
   @moduledoc """
   Parses Riot headers with rate limiting info into LimitEntry
   """
+  alias LolApi.Config
   alias LolApi.RateLimit
   alias LolApi.RateLimit.LimitEntry
 
@@ -24,6 +25,7 @@ defmodule LolApi.RateLimit.HeaderParser do
   @type limit_entries :: [limit_entry()]
 
   @type header_name :: String.t()
+  @type opts :: Keyword.t()
 
   @spec header_name!(atom()) :: header_name()
   def header_name!(nickname) do
@@ -44,36 +46,102 @@ defmodule LolApi.RateLimit.HeaderParser do
 
   @doc """
   Builds a minimal `%LimitEntry{}` representing a cooldown
-  based on the Riot response headers.
+  based on Riot response headers.
+
+  This function extracts the `x-rate-limit-type`, `retry-after`, and `date`
+  headers to construct a cooldown limit entry. If `retry-after` or `date`
+  are missing, defaults are applied. All other headers are ignored.
+
+  Currently, exponential backoff is not implemented — the raw `retry-after` is used
+  or capped by max configured cooldown.
 
   ## Examples
 
-      iex> headers = [
-      ...>   {"x-rate-limit-type", "application"},
-      ...>   {"retry-after", "42"},
-      ...>   {"date", "Tue, 01 Apr 2025 18:15:26 GMT"}
-      ...> ]
-      iex> LolApi.RateLimit.HeaderParser.extract_cooldown(headers, "na1", "/lol/summoner")
-      %LolApi.RateLimit.LimitEntry{
-        routing_val: :na1,
-        endpoint: "/lol/summoner",
-        limit_type: :application,
-        retry_after: 42,
-        request_time: ~U[2025-04-01 18:15:26Z],
-        window_sec: nil,
-        count_limit: nil,
-        count: 0,
-        source: :headers
-      }
+  Application rate limit:
+
+    iex> headers = [
+    ...>   {"retry-after", "5"},
+    ...>   {"x-rate-limit-type", "application"},
+    ...>   {"x-app-rate-limit", "20:10"},
+    ...>   {"x-app-rate-limit-count", "21:10"},
+    ...>   {"x-method-rate-limit", "100:20"},
+    ...>   {"x-method-rate-limit-count", "1:20"},
+    ...>   {"date", "Tue, 01 Apr 2025 18:15:26 GMT"}
+    ...> ]
+    iex> now = ~U[2025-04-01 18:15:30Z]
+    iex> max_ttl = 900
+    iex> LolApi.RateLimit.HeaderParser.extract_cooldown(headers, "na1", "/lol/spectator/v3/featured-games", now: now, max_ttl: max_ttl)
+    %LolApi.RateLimit.LimitEntry{
+      routing_val: :na1,
+      endpoint: "/lol/spectator/v3/featured-games",
+      limit_type: :application,
+      retry_after: 5,
+      request_time: ~U[2025-04-01 18:15:26Z],
+      window_sec: nil,
+      count_limit: nil,
+      count: 0,
+      source: :headers
+    }
+
+  Method rate limit:
+
+    iex> headers = [
+    ...>   {"retry-after", "7"},
+    ...>   {"x-rate-limit-type", "method"},
+    ...>   {"x-method-rate-limit", "100:20"},
+    ...>   {"x-method-rate-limit-count", "105:20"},
+    ...>   {"date", "Tue, 01 Apr 2025 18:00:00 GMT"}
+    ...> ]
+    iex> now = ~U[2025-04-01 18:00:01Z]
+    iex> max_ttl = 900
+    iex> LolApi.RateLimit.HeaderParser.extract_cooldown(headers, "la1", "/lol/spectator/v3/featured-games", now: now, max_ttl: max_ttl)
+    %LolApi.RateLimit.LimitEntry{
+      routing_val: :la1,
+      endpoint: "/lol/spectator/v3/featured-games",
+      limit_type: :method,
+      retry_after: 7,
+      request_time: ~U[2025-04-01 18:00:00Z],
+      window_sec: nil,
+      count_limit: nil,
+      count: 0,
+      source: :headers
+    }
+
+  Service rate limit fallback (no `retry-after`, uses `max_ttl`):
+
+    iex> headers = [
+    ...>   {"x-app-rate-limit", "20:10"},
+    ...>   {"x-app-rate-limit-count", "1:10"},
+    ...>   {"x-method-rate-limit", "100:20"},
+    ...>   {"x-method-rate-limit-count", "5:20"},
+    ...>   {"date", "Tue, 01 Apr 2025 18:16:00 GMT"}
+    ...> ]
+    iex> now = ~U[2025-04-01 18:16:05Z]
+    iex> max_ttl = 900
+    iex> LolApi.RateLimit.HeaderParser.extract_cooldown(headers, "na1", "/lol/spectator/v3/featured-games", now: now, max_ttl: max_ttl)
+    %LolApi.RateLimit.LimitEntry{
+      routing_val: :na1,
+      endpoint: "/lol/spectator/v3/featured-games",
+      limit_type: :service,
+      retry_after: 900,
+      request_time: ~U[2025-04-01 18:16:00Z],
+      window_sec: nil,
+      count_limit: nil,
+      count: 0,
+      source: :headers
+    }
   """
-  @spec extract_cooldown(headers(), routing_val(), endpoint()) :: limit_entry()
-  def extract_cooldown(resp_headers, routing_val, endpoint) do
+  @spec extract_cooldown(headers(), routing_val(), endpoint(), opts()) :: limit_entry()
+  def extract_cooldown(resp_headers, routing_val, endpoint, opts \\ []) do
+    now = Keyword.get(opts, :now, DateTime.utc_now(:second))
+    max_ttl = Keyword.get(opts, :max_ttl, Config.max_cooldown_ttl())
+
     headers = Enum.into(resp_headers, %{})
 
     arg = %{
-      limit_type: headers[@limit_type],
-      request_time: headers[@date],
-      retry_after: headers[@retry_after],
+      limit_type: Map.get(headers, @limit_type, :service),
+      request_time: Map.get(headers, @date, now),
+      retry_after: Map.get(headers, @retry_after, max_ttl),
       endpoint: endpoint,
       routing_val: routing_val,
       source: :headers

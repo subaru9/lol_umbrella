@@ -110,7 +110,7 @@ defmodule LolApi.RateLimit.Cooldown do
     now = Keyword.get(opts, :now, DateTime.utc_now(:second))
 
     with true <- create?(headers),
-         limit_entry <- HeaderParser.extract_cooldown(headers, routing_val, endpoint),
+         limit_entry <- HeaderParser.extract_cooldown(headers, routing_val, endpoint, now: now),
          {:ok, ttl} <- TTL.adjust(limit_entry, now),
          updated = LimitEntry.update!(limit_entry, %{adjusted_ttl: ttl}),
          key <- KeyBuilder.build(:cooldown, limit_entry) do
@@ -131,7 +131,7 @@ defmodule LolApi.RateLimit.Cooldown do
         :ok
 
       false ->
-        limit_entry = HeaderParser.extract_cooldown(headers, routing_val, endpoint)
+        limit_entry = HeaderParser.extract_cooldown(headers, routing_val, endpoint, now: now)
 
         Logger.debug("""
         [LolApi.RateLimit.Cooldown] Cooldown skipped. Details: \n
