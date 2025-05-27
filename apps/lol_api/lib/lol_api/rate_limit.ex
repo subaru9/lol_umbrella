@@ -47,8 +47,9 @@ defmodule LolApi.RateLimit do
 
   @spec hit(routing_val(), endpoint(), opts()) :: allow | throttle | {:error, ErrorMessage.t()}
   def hit(routing_val, endpoint, opts \\ []) do
-    with pool_name <- Keyword.get(opts, :pool_name, Config.pool_name()),
-         {:allow, _limit_entries} <- Cooldown.status(routing_val, endpoint, pool_name: pool_name),
+    pool_name = Keyword.get(opts, :pool_name, Config.pool_name())
+
+    with {:allow, _limit_entries} <- Cooldown.status(routing_val, endpoint, pool_name: pool_name),
          {:ok, true} <- Policy.known?(routing_val, endpoint, pool_name: pool_name),
          {:ok, limit_entries} <- Policy.fetch(routing_val, endpoint, pool_name: pool_name),
          {:allow, policy_entries} <-
@@ -78,9 +79,10 @@ defmodule LolApi.RateLimit do
   @spec refresh(headers(), routing_val(), endpoint(), opts()) ::
           {:ok, limit_entries()} | {:error, ErrorMessage.t()}
   def refresh(headers, routing_val, endpoint, opts \\ []) do
-    with pool_name <- Keyword.get(opts, :pool_name, Config.pool_name()),
-         now <- Keyword.get(opts, :now, DateTime.utc_now(:second)),
-         :ok <-
+    pool_name = Keyword.get(opts, :pool_name, Config.pool_name())
+    now = Keyword.get(opts, :now, DateTime.utc_now(:second))
+
+    with :ok <-
            Cooldown.maybe_set(headers, routing_val, endpoint, pool_name: pool_name, now: now),
          {:ok, false} <- Policy.known?(routing_val, endpoint, pool_name: pool_name),
          :ok <- Policy.set(headers, routing_val, endpoint, pool_name: pool_name),

@@ -207,5 +207,44 @@ defmodule LolApi.RateLimitTest do
 
       assert expected === Cooldown.status(routing_val, endpoint, pool_name: pool_name)
     end
+
+    test "handles expired cooldown", %{pool_name: pool_name} do
+      headers = [
+        {"date", "Tue, 02 Apr 2025 18:00:00 GMT"},
+        {"retry-after", "120"},
+        {"x-rate-limit-type", "application"},
+        {"x-app-rate-limit", "100:120,2:1"},
+        {"x-app-rate-limit-count", "20:120,3:1"},
+        {"x-method-rate-limit", "50:10"},
+        {"x-method-rate-limit-count", "20:10"}
+      ]
+
+      routing_val = "euw1"
+      endpoint = "/lol/summoner"
+      fixed_now = ~U[2025-04-02 18:02:00Z]
+
+      expected =
+        {:allow,
+         [
+           %LolApi.RateLimit.LimitEntry{
+             endpoint: "/lol/summoner",
+             routing_val: :euw1,
+             limit_type: nil,
+             window_sec: nil,
+             count_limit: nil,
+             count: 0,
+             request_time: nil,
+             retry_after: nil,
+             ttl: nil,
+             adjusted_ttl: nil,
+             source: :cooldown
+           }
+         ]}
+
+      {:ok, _limit_entries} =
+        RateLimit.refresh(headers, routing_val, endpoint, pool_name: pool_name, now: fixed_now)
+
+      assert expected === Cooldown.status(routing_val, endpoint, pool_name: pool_name)
+    end
   end
 end
